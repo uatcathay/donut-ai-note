@@ -1,6 +1,7 @@
 import { AppError } from '../errors.js';
 
-const MODEL = 'gemini-2.5-flash';
+// gemini-2.5-flash 已對新帳號關閉；用 flash-latest 別名指向當前穩定的免費 flash 模型
+const MODEL = 'gemini-flash-latest';
 
 export function buildPrompt() {
   return [
