@@ -133,6 +133,8 @@ async function sendForProcessing() {
   }
 }
 
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 function renderDone(body) {
   const link = $('result-link');
   if (body.destination.type === 'notion') {
@@ -142,8 +144,8 @@ function renderDone(body) {
     link.textContent = `📄 已存成桌面檔案：${body.destination.filePath}`;
     link.href = '#';
   }
-  const points = body.keyPoints.map((p) => `<li>${p}</li>`).join('');
-  $('preview').innerHTML = `<b>【摘要】</b><br>${body.summary}<br><br><b>【重點】</b><ul>${points}</ul><small>（完整逐字稿已另存）</small>`;
+  const points = body.keyPoints.map((p) => `<li>${esc(p)}</li>`).join('');
+  $('preview').innerHTML = `<b>【摘要】</b><br>${esc(body.summary)}<br><br><b>【重點】</b><ul>${points}</ul><small>（完整逐字稿已另存）</small>`;
   show('done');
 }
 

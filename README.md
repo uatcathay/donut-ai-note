@@ -4,7 +4,7 @@
 
 ## 一、安裝
 
-需要 Node.js 18 以上。
+需要 Node.js 20 以上。
 ```bash
 npm install
 cp .env.example .env

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, rm, mkdir } from 'node:fs/promises';
+import { readFile, rm, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { buildMarkdown, buildFilename, writeMarkdown } from '../src/outputs/markdown.js';
@@ -31,8 +31,7 @@ test('buildFilename 過濾非法字元', () => {
 });
 
 test('writeMarkdown 實際寫檔', async () => {
-  const dir = path.join(os.tmpdir(), 'mr-md-test');
-  await mkdir(dir, { recursive: true });
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'mr-'));
   const out = await writeMarkdown(result, { date: '2026-07-31', time: '0905' }, dir);
   assert.equal(out.type, 'markdown');
   const content = await readFile(out.filePath, 'utf8');

@@ -21,7 +21,7 @@ export function checkConfig(env) {
 export function createApp(deps = {}) {
   const run = deps.processMeeting || processMeeting;
   const app = express();
-  const upload = multer({ storage: multer.memoryStorage() });
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
   app.use(express.static(PUBLIC_DIR));
   app.post('/api/process', upload.single('audio'), async (req, res) => {
     try {
@@ -38,6 +38,13 @@ export function createApp(deps = {}) {
       const stage = e.stage || 'unknown';
       res.status(stage === 'unknown' ? 500 : 400).json({ ok: false, stage, message: e.message });
     }
+  });
+  app.use((err, _req, res, next) => {
+    if (err && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ ok: false, stage: 'upload', message: '音檔過大（上限 200MB）' });
+    }
+    if (err) return res.status(500).json({ ok: false, stage: 'unknown', message: err.message });
+    next();
   });
   return app;
 }

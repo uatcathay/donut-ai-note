@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
-import { rm, mkdir, readFile } from 'node:fs/promises';
+import { rm, mkdtemp, readFile } from 'node:fs/promises';
 import { chooseOutput, writeOutput } from '../src/outputs/index.js';
 
 const result = { title: 'T', summary: 's', keyPoints: ['a'], transcript: 't' };
@@ -17,8 +17,7 @@ test('chooseOutput：缺一 → markdown', () => {
 });
 
 test('writeOutput 走 markdown', async () => {
-  const dir = path.join(os.tmpdir(), 'mr-out-test');
-  await mkdir(dir, { recursive: true });
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'mr-'));
   const out = await writeOutput(result, stamp, { env: {}, destDir: dir });
   assert.equal(out.type, 'markdown');
   assert.match(await readFile(out.filePath, 'utf8'), /# T/);

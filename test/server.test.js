@@ -50,3 +50,19 @@ test('POST /api/process 分析失敗回 ok:false 與 stage', async () => {
   assert.equal(body.message, '額度用完');
   server.close();
 });
+
+test('POST /api/process 無音檔回 400 upload', async () => {
+  const app = createApp({
+    processMeeting: async () => { throw new Error('should not be called'); },
+  });
+  const server = app.listen(0);
+  const { port } = server.address();
+  const fd = new FormData();
+  fd.set('title', '測試');
+  const res = await fetch(`http://localhost:${port}/api/process`, { method: 'POST', body: fd });
+  const body = await res.json();
+  assert.equal(res.status, 400);
+  assert.equal(body.ok, false);
+  assert.equal(body.stage, 'upload');
+  server.close();
+});

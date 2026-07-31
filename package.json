@@ -2,7 +2,7 @@
   "name": "meeting-recorder",
   "version": "0.1.0",
   "type": "module",
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=20" },
   "scripts": {
     "test": "node --test",
     "start": "node src/server.js"
