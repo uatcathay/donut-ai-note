@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>會議記錄工具</title>
+  <style>
+    body { font-family: -apple-system, "PingFang TC", sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+    h1 { font-size: 20px; }
+    input[type=text] { width: 100%; padding: 8px; font-size: 15px; box-sizing: border-box; margin-bottom: 12px; }
+    button { font-size: 15px; padding: 10px 16px; margin: 4px 6px 4px 0; cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; }
+    button.primary { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
+    button.danger { color: #c0392b; border-color: #e0b4ae; }
+    canvas { width: 100%; height: 48px; background: #f4f6fa; border-radius: 8px; display: block; margin: 8px 0; }
+    .hidden { display: none; }
+    .step { margin: 4px 0; color: #666; }
+    .step.done { color: #1a8a4a; }
+    .step.active { color: #2d6cdf; font-weight: 600; }
+    #err { color: #c0392b; margin-top: 12px; white-space: pre-wrap; }
+    #preview { background: #f4f6fa; padding: 12px 16px; border-radius: 8px; margin-top: 12px; }
+    a.result { display: inline-block; margin: 8px 0; font-weight: 600; }
+    .timer { font-size: 28px; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ 會議記錄工具</h1>
+
+  <section id="view-idle">
+    <input id="title" type="text" placeholder="會議標題（選填，空白就用日期）" />
+    <button id="btn-start" class="primary">● 開始錄音</button>
+  </section>
+
+  <section id="view-recording" class="hidden">
+    <div>🔴 <span id="rec-label">錄音中</span>　<span class="timer" id="timer">00:00</span></div>
+    <canvas id="wave" width="600" height="48"></canvas>
+    <button id="btn-pause">⏸ 暫停</button>
+    <button id="btn-stop" class="primary">■ 停止並分析</button>
+    <button id="btn-restart" class="danger">↺ 重新開始</button>
+  </section>
+
+  <section id="view-processing" class="hidden">
+    <div class="step" id="s-upload">○ 上傳音檔</div>
+    <div class="step" id="s-analyze">○ Gemini 分析中（逐字稿＋摘要＋重點）</div>
+    <div class="step" id="s-write">○ 寫入輸出</div>
+  </section>
+
+  <section id="view-done" class="hidden">
+    <div>✅ 完成！</div>
+    <a class="result" id="result-link" href="#" target="_blank"></a>
+    <div id="preview"></div>
+    <button id="btn-new" class="primary">＋ 記錄新會議</button>
+  </section>
+
+  <div id="err" class="hidden"></div>
+  <button id="btn-retry" class="hidden">↻ 用同一段錄音重試</button>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
