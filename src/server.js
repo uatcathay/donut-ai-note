@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { processMeeting } from './pipeline.js';
 
@@ -50,6 +51,9 @@ export function createApp(deps = {}) {
 }
 
 export function start() {
+  // Node 不會自動載入 .env，這裡在正式啟動時讀入專案根目錄的 .env
+  const envPath = path.join(__dirname, '..', '.env');
+  if (existsSync(envPath)) process.loadEnvFile(envPath);
   for (const w of checkConfig(process.env)) console.warn('[設定提醒] ' + w);
   const app = createApp();
   const port = process.env.PORT || 3000;
