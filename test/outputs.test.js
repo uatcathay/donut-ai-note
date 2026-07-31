@@ -9,7 +9,7 @@ const result = { title: 'T', summary: 's', keyPoints: ['a'], transcript: 't' };
 const stamp = { date: '2026-07-31', time: '0905' };
 
 test('chooseOutput：兩者皆設 → notion', () => {
-  assert.equal(chooseOutput({ NOTION_TOKEN: 'x', NOTION_PARENT_PAGE_ID: 'y' }), 'notion');
+  assert.equal(chooseOutput({ NOTION_TOKEN: 'x', NOTION_DATABASE_ID: 'y' }), 'notion');
 });
 test('chooseOutput：缺一 → markdown', () => {
   assert.equal(chooseOutput({ NOTION_TOKEN: 'x' }), 'markdown');
@@ -30,8 +30,8 @@ test('writeOutput 走 notion（注入 client）', async () => {
     blocks: { children: { append: async () => {} } },
   };
   const out = await writeOutput(result, stamp, {
-    env: { NOTION_TOKEN: 'x', NOTION_PARENT_PAGE_ID: 'y' },
-    notion: { client: fakeClient, parentId: 'y' },
+    env: { NOTION_TOKEN: 'x', NOTION_DATABASE_ID: 'y' },
+    notion: { client: fakeClient, dataSourceId: 'DS' },
   });
   assert.equal(out.type, 'notion');
 });

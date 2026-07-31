@@ -6,9 +6,8 @@ const paragraph = (content) => ({ object: 'block', type: 'paragraph', paragraph:
 const heading2 = (content) => ({ object: 'block', type: 'heading_2', heading_2: { rich_text: richText(content) } });
 const bullet = (content) => ({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: richText(content) } });
 
-export function buildBlocks(result, dateStr) {
+export function buildBlocks(result) {
   return [
-    paragraph(`📅 ${dateStr}`),
     heading2('摘要'),
     paragraph(result.summary),
     heading2('重點'),
@@ -35,15 +34,30 @@ export function chunk(arr, size) {
 
 const titleProp = (content) => ({ title: { title: richText(content) } });
 
+// 新版 Notion API：資料庫底下有 data source，建立列與欄位都掛在 data source 上。
+// 由 database id 解析出第一個 data source id。
+async function resolveDataSourceId(client, databaseId) {
+  const db = await client.databases.retrieve({ database_id: databaseId });
+  const ds = db.data_sources && db.data_sources[0];
+  if (!ds) throw new AppError('notion', '找不到資料庫的 data source，請確認 NOTION_DATABASE_ID 正確且 integration 已連線。');
+  return ds.id;
+}
+
 export async function writeNotion(result, stamp, deps = {}) {
   const client = deps.client || new Client({ auth: process.env.NOTION_TOKEN });
-  const parentId = deps.parentId || process.env.NOTION_PARENT_PAGE_ID;
+  const databaseId = deps.databaseId || process.env.NOTION_DATABASE_ID;
   try {
+    const dataSourceId = deps.dataSourceId || (await resolveDataSourceId(client, databaseId));
+    // 每場會議 = 資料庫的一列：Name = 標題、Date = 日期
     const main = await client.pages.create({
-      parent: { page_id: parentId },
-      properties: titleProp(result.title),
-      children: buildBlocks(result, stamp.date),
+      parent: { type: 'data_source_id', data_source_id: dataSourceId },
+      properties: {
+        Name: { title: richText(result.title) },
+        Date: { date: { start: stamp.date } },
+      },
+      children: buildBlocks(result),
     });
+    // 逐字稿另存成該列頁面底下的子頁
     const tBlocks = buildTranscriptBlocks(result.transcript);
     const sub = await client.pages.create({
       parent: { page_id: main.id },

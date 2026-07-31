@@ -2,7 +2,7 @@ import { writeNotion } from './notion.js';
 import { writeMarkdown } from './markdown.js';
 
 export function chooseOutput(env) {
-  return env.NOTION_TOKEN && env.NOTION_PARENT_PAGE_ID ? 'notion' : 'markdown';
+  return env.NOTION_TOKEN && env.NOTION_DATABASE_ID ? 'notion' : 'markdown';
 }
 
 export async function writeOutput(result, stamp, deps = {}) {

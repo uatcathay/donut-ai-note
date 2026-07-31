@@ -13,8 +13,8 @@ export function checkConfig(env) {
   if (!env.GEMINI_API_KEY) {
     warnings.push('缺少 GEMINI_API_KEY，無法分析錄音。請到 Google AI Studio 申請並填入 .env。');
   }
-  if (!env.NOTION_TOKEN || !env.NOTION_PARENT_PAGE_ID) {
-    warnings.push('未設定 Notion（NOTION_TOKEN / NOTION_PARENT_PAGE_ID），結果將改輸出成桌面 .md 檔。');
+  if (!env.NOTION_TOKEN || !env.NOTION_DATABASE_ID) {
+    warnings.push('未設定 Notion（NOTION_TOKEN / NOTION_DATABASE_ID），結果將改輸出成桌面 .md 檔。');
   }
   return warnings;
 }
