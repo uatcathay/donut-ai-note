@@ -67,11 +67,13 @@ function togglePause() {
   if (mediaRecorder.state === 'recording') {
     mediaRecorder.pause();
     stopTimer();
+    stopWave();
     $('btn-pause').textContent = '▶ 繼續';
     $('rec-label').textContent = '已暫停';
   } else if (mediaRecorder.state === 'paused') {
     mediaRecorder.resume();
     startTimer();
+    drawWave();
     $('btn-pause').textContent = '⏸ 暫停';
     $('rec-label').textContent = '錄音中';
   }
@@ -89,6 +91,7 @@ function restartRecording() {
   if (!confirm('確定要丟掉目前錄音、重新開始嗎？')) return;
   try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch {}
   cleanupStream();
+  mediaRecorder = null;
   chunks = [];
   show('idle');
 }
@@ -97,6 +100,7 @@ function stopAndAnalyze() {
   if (!mediaRecorder) return;
   mediaRecorder.onstop = async () => {
     cleanupStream();
+    mediaRecorder = null;
     lastBlob = new Blob(chunks, { type: 'audio/webm' });
     await sendForProcessing();
   };
