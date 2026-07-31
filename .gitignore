@@ -1,0 +1,5 @@
+.env
+node_modules/
+*.log
+/tmp-recordings/
+.DS_Store
