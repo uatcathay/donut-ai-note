@@ -3,3 +3,5 @@ node_modules/
 *.log
 /tmp-recordings/
 .DS_Store
+/Browser AI Note.app/
+/assets/icon.iconset/

@@ -26,10 +26,13 @@ cp .env.example .env
 
 ## 三、使用
 
-- **雙擊 `會議記錄.command`**（建議把它拉到 Dock 或在桌面建立替身），會自動啟動並開啟瀏覽器。
-- 或手動：`npm start`，再開 http://localhost:3000。
+1. 首次或更新後，先建置 App：`bash scripts/build-app.sh`（會在專案根目錄產生 `Browser AI Note.app`）。
+2. **雙擊 `Browser AI Note`**（可拖到 Dock）→ 會開一個獨立小視窗。
+3. 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
+4. **關閉視窗即結束**（背景伺服器會一併關閉，不留殘留程序）。
 
-填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
+> 需要 Google Chrome。若沒設定 Notion，結果會存成桌面 `.md`。
+> 開發時也可手動啟動：`npm start`，再開 http://localhost:3000。
 
 ## 四、測試
 
