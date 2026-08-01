@@ -169,4 +169,10 @@ $('btn-restart').onclick = restartRecording;
 $('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };
 $('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
+// 視窗關閉時通知伺服器結束（配合啟動器達成「關窗即結束」）。
+// 註：在 App 視窗模式下，離開頁面幾乎只會發生於關窗；重新整理雖也會觸發，但 App 模式極少手動重整。
+window.addEventListener('pagehide', () => {
+  try { navigator.sendBeacon('/shutdown'); } catch { /* 忽略 */ }
+});
+
 show('idle');

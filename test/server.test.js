@@ -66,3 +66,17 @@ test('POST /api/process 無音檔回 400 upload', async () => {
   assert.equal(body.stage, 'upload');
   server.close();
 });
+
+test('POST /shutdown 回 200 並呼叫 onShutdown（注入 spy，不真的退出）', async () => {
+  let called = 0;
+  const app = createApp({
+    processMeeting: async () => ({}),
+    onShutdown: () => { called += 1; },
+  });
+  const server = app.listen(0);
+  const { port } = server.address();
+  const res = await fetch(`http://localhost:${port}/shutdown`, { method: 'POST' });
+  assert.equal(res.status, 200);
+  assert.equal(called, 1);
+  server.close();
+});

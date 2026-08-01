@@ -21,9 +21,15 @@ export function checkConfig(env) {
 
 export function createApp(deps = {}) {
   const run = deps.processMeeting || processMeeting;
+  const shutdown = deps.onShutdown || (() => process.exit(0));
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
   app.use(express.static(PUBLIC_DIR));
+  // 前端視窗關閉時會打這個端點，讓伺服器自己結束（配合啟動器達成「關窗即結束」）
+  app.post('/shutdown', (_req, res) => {
+    res.status(200).end();
+    shutdown();
+  });
   app.post('/api/process', upload.single('audio'), async (req, res) => {
     try {
       if (!req.file) {
