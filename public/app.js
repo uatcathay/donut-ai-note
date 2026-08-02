@@ -1,6 +1,10 @@
 const $ = (id) => document.getElementById(id);
 const views = ['idle', 'recording', 'processing', 'done'];
-const FOCUS_TARGET = { idle: 'btn-start', recording: 'btn-stop', done: 'btn-new' };
+// 切換狀態後把焦點移到該頁的主要控制項，否則被按下的按鈕隨即被隱藏、
+// 焦點掉回 <body>，鍵盤使用者每次都要重新 Tab。
+// 待機頁指向標題欄位而非麥克風按鈕：頁面載入與「New AI Note」之後，
+// 自然的下一步都是輸入標題。processing 沒有控制項，刻意不聚焦。
+const FOCUS_TARGET = { idle: 'title', recording: 'btn-stop', done: 'btn-new' };
 const BARS = 48;
 for (const el of document.querySelectorAll('.wave')) {
   el.innerHTML = '<span class="bar"></span>'.repeat(BARS);
