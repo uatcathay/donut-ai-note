@@ -44,8 +44,10 @@
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .hidden { display: none !important; }
 
-    /* 標題：三個頁面的槽位高度必須一致，否則切換時會產生垂直位移 */
-    .title-input, .rec-title, .done-title { height: 36px; margin-bottom: 32px; }
+    /* 標題：三個頁面的槽位規格必須一致，否則切換時會產生垂直位移。
+       用 min-height 而非 height，長標題換行時區塊自然往下長，不會溢出壓到麥克風；
+       固定的 52px 下邊距同時保證標題與下方元素之間永遠至少有這麼多空間。 */
+    .title-input, .rec-title, .done-title { min-height: 36px; margin-bottom: 52px; }
     .title-input {
       width: 100%; padding: 6px 0;
       border: 0; border-bottom: 1px solid transparent; outline: none;
@@ -59,7 +61,7 @@
     .rec-title, .done-title {
       padding: 6px 0; border-bottom: 1px solid transparent;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; text-align: center;
+      font-size: 18px; line-height: 1.4; text-align: center;
     }
     /* 標題為空時保留空間，不可用 display:none（會抽掉槽位造成上移） */
     .rec-title.is-empty { visibility: hidden; }
