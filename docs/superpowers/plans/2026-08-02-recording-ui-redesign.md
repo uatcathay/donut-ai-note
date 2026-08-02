@@ -20,7 +20,8 @@
 - **深淺色**：以 `prefers-color-scheme` 切換，兩種模式都要能看。
 - **漸層色值**：`--grad-from: #F9C05C`、`--grad-to: #F52D8E`（已自 `assets/icon.png` 取樣）。所有漸層一律引用這兩個變數，不得寫死 hex。
 - **visualizer 尺寸**：相對參考元件等比放大 1.5 倍——bar 寬 3px、間距 3px、容器 288×24px（整排實寬 285px，仍在 `.stage` 的 320px 內，不需調整其他版面設定）。
-- **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 480px` 且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 32px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 以 `max-height: 200px` 約束，不得撐破 `.stage`。
+- **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 560px`（取自最高的完成頁）且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 32px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 固定 `height: 400px` 且自身捲動，不得撐破 `.stage`。
+- **完成頁**：不放勾勾圖示；摘要永遠展開不摺疊、固定高 400px、寬 `calc(100vw - 80px)`（距視窗左右各 40px）；標題字級 18px；「開啟 Notion 記錄」為文字樣式並置於摘要下方；「記錄新會議」文案為 `New AI Note`。
 - **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、Restart 的確認對話框。
 
 ## 檔案結構
@@ -46,7 +47,7 @@ meeting-recorder/
 **Interfaces:**
 - Produces:
   - CSS 變數：`--grad-from`、`--grad-to`、`--fg`、`--fg-70`、`--fg-30`、`--fg-10`、`--bg`、`--ok`、`--danger`、`--danger-bg`（Task 2、3 直接使用）
-  - CSS 類別：`.stage`、`.panel`、`.hidden`、`.title-input`、`.orb`、`.mic`、`.cube`、`.timer`、`.wave`、`.bar`、`.hint`、`.linkbtn`、`.linkbtn--danger`、`.rec-title`、`.ring`、`.steps`、`.step`、`.check`、`.done-title`、`.cta`、`.cta.is-file`、`.summary-box`（Task 2、3 的標記直接套用）
+  - CSS 類別：`.stage`、`.panel`、`.hidden`、`.title-input`、`.orb`、`.mic`、`.cube`、`.timer`、`.wave`、`.bar`、`.hint`、`.linkbtn`、`.linkbtn--danger`、`.rec-title`、`.ring`、`.steps`、`.step`、`.done-title`、`.linkbtn.is-file`、`#preview`（Task 2、3 的標記直接套用）
   - `app.js` 常數 `BARS = 48` 與 `.wave` 填充迴圈（Task 2 的 `drawWave()` 依賴 `#wave .bar` 已存在）
 
 - [ ] **Step 1: 替換 `public/index.html` 的 `<style>` 區塊**
@@ -89,7 +90,7 @@ meeting-recorder/
     }
     /* min-height 固定，內容自頂端起排：狀態切換時外框高度不變，垂直置中的結果因此恆定 */
     .stage {
-      width: 100%; max-width: 320px; min-height: 480px;
+      width: 100%; max-width: 320px; min-height: 560px;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -161,10 +162,14 @@ meeting-recorder/
       padding: 4px 10px; border: 0; border-radius: 6px;
       background: none; color: var(--fg-70); cursor: pointer;
       font: inherit; font-size: 12px;
+      display: inline-block; text-decoration: none;   /* 同一套樣式也用在 <a> 上 */
     }
     .linkbtn:hover { background: var(--fg-10); }
     .linkbtn--danger { color: var(--danger); }
     .linkbtn + .linkbtn { margin-top: 20px; }
+    /* .md 輸出時連結不可點，只作為路徑顯示 */
+    .linkbtn.is-file { cursor: default; word-break: break-all; }
+    .linkbtn.is-file:hover { background: none; }
 
     /* 處理中 */
     .ring {
@@ -187,36 +192,16 @@ meeting-recorder/
     .step.done::before { content: "✓ "; }
 
     /* 完成 */
-    .check {
-      width: 64px; height: 64px; margin-bottom: 8px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-      color: #fff; font-size: 30px;
-    }
-    .done-title { margin-bottom: 20px; font-size: 15px; text-align: center; }
-    .cta {
-      margin-bottom: 20px; padding: 10px 20px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-      color: #fff; font-size: 14px; font-weight: 600;
-      text-decoration: none; text-align: center;
-    }
-    .cta.is-file {
-      background: none; color: var(--fg-70);
-      font-size: 12px; font-weight: 400; word-break: break-all;
-    }
-    .summary-box { width: 100%; margin-bottom: 20px; }
-    .summary-box > summary {
-      list-style: none; cursor: pointer; text-align: center;
-      font-size: 12px; color: var(--fg-70);
-    }
-    .summary-box > summary::-webkit-details-marker { display: none; }
-    .summary-box > summary::after { content: " ⌄"; }
-    .summary-box[open] > summary::after { content: " ⌃"; }
+    .done-title { margin-bottom: 20px; font-size: 18px; text-align: center; }
+    /* 摘要：永遠展開、固定高、距視窗左右各 40px（刻意寬於 .stage，靠置中突破）。
+       calc(100vw - 80px) 恆窄於 body 的內容框，不會產生橫向捲軸。 */
     #preview {
-      margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+      width: calc(100vw - 80px);
+      height: 400px; overflow-y: auto;
+      margin-bottom: 20px; padding: 12px 14px; border-radius: 10px;
       background: var(--fg-10);
       font-size: 13px; line-height: 1.6;
-      max-height: 200px; overflow-y: auto;   /* 不得撐破 .stage 的固定高度 */
+      text-align: left;
     }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
 
@@ -464,8 +449,8 @@ git commit -m "feat: 錄音／暫停頁重做，48 根長條改由真實音量�
 - Modify: `public/app.js`（`setStep`、`sendForProcessing`、`renderDone`）
 
 **Interfaces:**
-- Consumes: Task 1 的 CSS 類別 `.ring`、`.steps`、`.step`、`.check`、`.done-title`、`.cta`、`.cta.is-file`、`.summary-box`、`.linkbtn`。
-- Produces: 新元素 `#done-title`；`.summary-box`（`<details>`）作為摘要摺疊容器；`setStep(id, state)` 的新契約——`state` 為 `''`、`'active'`、`'done'` 三者之一，圖示與顏色全由 CSS 依 class 呈現，函式不再改動文字內容。
+- Consumes: Task 1 的 CSS 類別 `.ring`、`.steps`、`.step`、`.done-title`、`.linkbtn`、`.linkbtn.is-file`、`#preview`。
+- Produces: 新元素 `#done-title`；`#preview` 作為永遠展開、固定高 400px 的摘要區；`setStep(id, state)` 的新契約——`state` 為 `''`、`'active'`、`'done'` 三者之一，圖示與顏色全由 CSS 依 class 呈現，函式不再改動文字內容。
 
 - [ ] **Step 1: 替換 `view-processing` 的標記**
 
@@ -486,14 +471,10 @@ git commit -m "feat: 錄音／暫停頁重做，48 根長條改由真實音量�
 
 ```html
     <section id="view-done" class="panel hidden">
-      <div class="check" aria-hidden="true">✓</div>
       <div id="done-title" class="done-title"></div>
-      <a class="cta" id="result-link" href="#" target="_blank" rel="noopener"></a>
-      <details class="summary-box" id="summary-box">
-        <summary>查看摘要</summary>
-        <div id="preview"></div>
-      </details>
-      <button id="btn-new" class="linkbtn">＋ 記錄新會議</button>
+      <div id="preview"></div>
+      <a class="linkbtn" id="result-link" href="#" target="_blank" rel="noopener"></a>
+      <button id="btn-new" class="linkbtn">New AI Note</button>
     </section>
 ```
 
@@ -547,7 +528,6 @@ function renderDone(body) {
   }
   const points = body.keyPoints.map((p) => `<li>${esc(p)}</li>`).join('');
   $('preview').innerHTML = `<b>【摘要】</b><br>${esc(body.summary)}<br><br><b>【重點】</b><ul>${points}</ul><small>（完整逐字稿已另存）</small>`;
-  $('summary-box').open = false;
   show('done');
 }
 ```
@@ -568,9 +548,9 @@ Run: `npm start`，錄一段 10 秒左右的話並停止。
 
 Expected：
 - 處理中：中央是脈動的漸層圓環；三個步驟依序由灰 `○` → `⟳` 亮起 → 綠 `✓`。
-- 完成：漸層圓形勾勾 → 會議標題 → 漸層主按鈕「開啟 Notion 記錄」（未設定 Notion 時改顯示灰色的 `.md` 檔路徑且不可點）→ 「查看摘要 ⌄」→「＋ 記錄新會議」。
-- 點「查看摘要」展開摘要與重點；箭頭轉向 `⌃`。
-- 按「＋ 記錄新會議」回待機頁，標題輸入已清空。
+- 完成：會議標題（18px）→ 灰底摘要區（固定 400px 高、距視窗左右各 40px、內容超出時自身捲動）→ 文字樣式的「開啟 Notion 記錄」（未設定 Notion 時改顯示 `.md` 檔路徑且不可點）→「New AI Note」。
+- 完成頁不應出現勾勾圖示、也沒有「查看摘要」摺疊。
+- 按「New AI Note」回待機頁，標題輸入已清空。
 - 深色模式下四個狀態都可讀。
 
 - [ ] **Step 8: 驗證錯誤區塊樣式**
@@ -623,13 +603,13 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 
 逐項確認：
 - [ ] 480×720 獨立小窗，無橫向捲軸，內容垂直置中。
-- [ ] 待機 → 錄音 → 處理中 → 完成 → 「記錄新會議」回待機，四狀態切換正確。
+- [ ] 待機 → 錄音 → 處理中 → 完成 → 「New AI Note」回待機，四狀態切換正確。
 - [ ] 說話時長條隨音量起伏。
 - [ ] `Pause` → 方塊停轉、計時器停、長條凍結、字變 `Resume`；`Resume` 後全部恢復。
 - [ ] `Pause` 與 `Restart` 的間距、visualizer 與 `Pause` 的間距，目視皆為 20px（可用 DevTools 量測確認）。
 - [ ] `Restart` 跳確認框，確認後歸零回待機。
 - [ ] 完成後 Notion 資料庫確實新增一列（或桌面出現 `.md` 檔），內容正確。
-- [ ] 完成頁摘要摺疊／展開正常；用一場較長的會議驗證展開後下方「＋ 記錄新會議」仍在畫面內、摘要區自己可捲動。
+- [ ] 用一場較長的會議驗證：摘要區固定 400px 高、內容超出時自身出現捲軸，下方「開啟 Notion 記錄」與「New AI Note」仍在畫面內。
 - [ ] 麥克風權限拒絕時顯示繁中錯誤訊息。
 - [ ] 深色與淺色模式各檢視四狀態一次。
 - [ ] 關閉視窗後 `lsof -ti:3000` 回傳空（無殘留程序）。
@@ -672,6 +652,5 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 **3. 型別與命名一致性**
 - `BARS`（Task 1 Step 3 定義）僅用於填充迴圈；`drawWave()`（Task 2）改用 `bars.length`，不依賴該常數，無不一致。
 - `setStep(id, state)` 的 `state` 在 Task 3 Step 3 定義為 `''` / `'active'` / `'done'`，Task 3 Step 4 的呼叫與既有 `sendForProcessing()` 內的呼叫全部符合。
-- CSS 類別名稱在 Task 1 定義、Task 2–3 使用，逐一比對一致（`.linkbtn--danger`、`.cta.is-file`、`.summary-box`、`.paused`）。
-- `#summary-box` 在 Task 3 Step 2 加上 id，Step 5 的 `$('summary-box').open` 對應存在。
+- CSS 類別名稱在 Task 1 定義、Task 2–3 使用，逐一比對一致（`.linkbtn--danger`、`.linkbtn.is-file`、`.paused`）。
 - `#wave` 在 Task 1 仍是舊 canvas、Task 2 才變成 `.wave` 容器；Task 1 的填充迴圈以 `.wave` 選取，不會誤觸 canvas，順序安全。
