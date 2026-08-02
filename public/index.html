@@ -80,13 +80,13 @@
     }
     #view-recording .timer { color: var(--fg-70); }
 
-    /* visualizer */
+    /* visualizer（相對參考元件等比放大 1.5 倍，錄音時更明顯） */
     .wave {
-      width: 256px; height: 16px; margin-bottom: 20px;
-      display: flex; align-items: center; justify-content: center; gap: 2px;
+      width: 288px; height: 24px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: center; gap: 3px;
     }
     .wave .bar {
-      width: 2px; height: 100%; border-radius: 1px;
+      width: 3px; height: 100%; border-radius: 1.5px;
       background: var(--fg-10);
       transform: scaleY(.25); transform-origin: center;
       transition: transform .12s ease-out;
