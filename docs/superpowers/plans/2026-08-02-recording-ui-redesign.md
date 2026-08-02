@@ -19,6 +19,7 @@
 - **視窗尺寸**：所有版面須在 480×720 下可用且無橫向捲軸。
 - **深淺色**：以 `prefers-color-scheme` 切換，兩種模式都要能看。
 - **漸層色值**：`--grad-from: #F9C05C`、`--grad-to: #F52D8E`（已自 `assets/icon.png` 取樣）。所有漸層一律引用這兩個變數，不得寫死 hex。
+- **visualizer 尺寸**：相對參考元件等比放大 1.5 倍——bar 寬 3px、間距 3px、容器 288×24px（整排實寬 285px，仍在 `.stage` 的 320px 內，不需調整其他版面設定）。
 - **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、Restart 的確認對話框。
 
 ## 檔案結構
@@ -127,13 +128,13 @@ meeting-recorder/
     }
     #view-recording .timer { color: var(--fg-70); }
 
-    /* visualizer */
+    /* visualizer（相對參考元件等比放大 1.5 倍，錄音時更明顯） */
     .wave {
-      width: 256px; height: 16px; margin-bottom: 20px;
-      display: flex; align-items: center; justify-content: center; gap: 2px;
+      width: 288px; height: 24px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: center; gap: 3px;
     }
     .wave .bar {
-      width: 2px; height: 100%; border-radius: 1px;
+      width: 3px; height: 100%; border-radius: 1.5px;
       background: var(--fg-10);
       transform: scaleY(.25); transform-origin: center;
       transition: transform .12s ease-out;

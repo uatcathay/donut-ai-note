@@ -84,7 +84,7 @@
    ↕ 8px
 計時器
    ↕ 8px
-visualizer（48 根長條，寬 256px，高 16px）
+visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參考元件等比放大 1.5 倍）
    ↕ 20px
 主控制項（Pause / Click to speak / 步驟清單 / 完成資訊）
    ↕ 20px
