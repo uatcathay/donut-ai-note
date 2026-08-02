@@ -47,18 +47,18 @@
     .hidden { display: none !important; }
 
     /* 標題：兩種狀態的槽位高度必須一致，否則切換時上方元素會位移 */
-    .title-input, .rec-title { height: 32px; margin-bottom: 32px; }
+    .title-input, .rec-title { height: 36px; margin-bottom: 32px; }
     .title-input {
       width: 100%; padding: 6px 0;
       border: 0; border-bottom: 1px solid transparent; outline: none;
       background: none; color: var(--fg);
-      font: inherit; font-size: 15px; text-align: center;
+      font: inherit; font-size: 18px; text-align: center;
     }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
     .rec-title {
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; text-align: center;
+      font-size: 18px; text-align: center;
     }
     /* 標題為空時保留空間，不可用 display:none（會抽掉槽位造成上移） */
     .rec-title.is-empty { visibility: hidden; }
@@ -123,7 +123,8 @@
 
     /* 處理中 */
     .ring {
-      width: 64px; height: 64px; margin-bottom: 20px; border-radius: 50%;
+      width: 64px; height: 64px; border-radius: 50%;
+      margin-top: 80px; margin-bottom: 20px;
       background: conic-gradient(var(--grad-from), var(--grad-to), var(--grad-from));
       -webkit-mask: radial-gradient(circle, transparent 52%, #000 54%);
       mask: radial-gradient(circle, transparent 52%, #000 54%);
@@ -133,13 +134,7 @@
       0%, 100% { opacity: .45; transform: scale(.94); }
       50% { opacity: 1; transform: scale(1); }
     }
-    .steps { display: flex; flex-direction: column; align-items: flex-start; }
-    .step { margin: 4px 0; font-size: 13px; color: var(--fg-30); }
-    .step::before { content: "○ "; }
-    .step.active { color: var(--fg); }
-    .step.active::before { content: "⟳ "; }
-    .step.done { color: var(--ok); }
-    .step.done::before { content: "✓ "; }
+    .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
 
     /* 完成 */
     .done-title { margin-bottom: 20px; font-size: 18px; text-align: center; }
@@ -194,11 +189,7 @@
 
     <section id="view-processing" class="panel hidden">
       <div class="ring" aria-hidden="true"></div>
-      <div class="steps">
-        <div class="step" id="s-upload">上傳音檔</div>
-        <div class="step" id="s-analyze">Gemini 分析中（逐字稿＋摘要＋重點）</div>
-        <div class="step" id="s-write">寫入輸出</div>
-      </div>
+      <div id="proc-stage" class="proc-stage" role="status" aria-live="polite"></div>
     </section>
 
     <section id="view-done" class="panel hidden">
