@@ -33,7 +33,9 @@ function stopTimer() { clearInterval(timerId); timerId = null; }
 // 改用對數頻段：低頻分到較多長條、高頻壓縮，48 根都落在有內容的範圍內。
 const WAVE_MIN_HZ = 60;
 const WAVE_MAX_HZ = 6000;
-const WAVE_GAMMA = 1.8;   // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
+const WAVE_GAMMA = 1.4;        // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
+const WAVE_GATE = 10;          // 0–255；峰值低於此視為環境噪音，整排回到靜止高度
+const WAVE_PEAK_DECAY = 0.93;  // 峰值追隨器每幀的衰減率，越小則基準回落越快
 
 function bandEdges(binCount, nyquist, bands) {
   return Array.from({ length: bands + 1 }, (_, i) => {
@@ -46,16 +48,26 @@ function drawWave() {
   const bars = document.querySelectorAll('#wave .bar');
   const data = new Uint8Array(analyser.frequencyBinCount);
   const edges = bandEdges(data.length, audioCtx.sampleRate / 2, bars.length);
+  const levels = new Float32Array(bars.length);
+  let peak = 0;
   const render = () => {
     rafId = requestAnimationFrame(render);
     analyser.getByteFrequencyData(data);
+    let frameMax = 0;
     for (let i = 0; i < bars.length; i++) {
       const from = edges[i];
       const to = Math.max(from + 1, edges[i + 1]);   // 低頻的相鄰邊界可能重疊，至少取一格
       let sum = 0;
       for (let j = from; j < to; j++) sum += data[j];
-      const avg = sum / (to - from);            // 0–255
-      const level = (avg / 255) ** WAVE_GAMMA;  // 指數曲線：把弱訊號壓更低，拉開強弱差距
+      levels[i] = sum / (to - from);            // 0–255
+      if (levels[i] > frameMax) frameMax = levels[i];
+    }
+    // 逐幀正規化：以當下的峰值為基準，講話大聲小聲都能撐滿整排。
+    // 用會衰減的峰值追隨器而非直接取當幀最大值——後者會讓整排每幀劇烈重新縮放。
+    peak = Math.max(frameMax, peak * WAVE_PEAK_DECAY);
+    const silent = peak < WAVE_GATE;              // 沒人講話時不要放大環境噪音
+    for (let i = 0; i < bars.length; i++) {
+      const level = silent ? 0 : (levels[i] / peak) ** WAVE_GAMMA;
       bars[i].style.transform = `scaleY(${0.12 + level * 0.88})`;  // 12%–100%
     }
   };
