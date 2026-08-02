@@ -208,17 +208,24 @@
       <button id="btn-restart" class="linkbtn linkbtn--danger">Restart</button>
     </section>
 
-    <section id="view-processing" class="hidden">
-      <div class="step" id="s-upload">○ 上傳音檔</div>
-      <div class="step" id="s-analyze">○ Gemini 分析中（逐字稿＋摘要＋重點）</div>
-      <div class="step" id="s-write">○ 寫入輸出</div>
+    <section id="view-processing" class="panel hidden">
+      <div class="ring" aria-hidden="true"></div>
+      <div class="steps">
+        <div class="step" id="s-upload">上傳音檔</div>
+        <div class="step" id="s-analyze">Gemini 分析中（逐字稿＋摘要＋重點）</div>
+        <div class="step" id="s-write">寫入輸出</div>
+      </div>
     </section>
 
-    <section id="view-done" class="hidden">
-      <div>✅ 完成！</div>
-      <a class="result" id="result-link" href="#" target="_blank"></a>
-      <div id="preview"></div>
-      <button id="btn-new" class="primary">＋ 記錄新會議</button>
+    <section id="view-done" class="panel hidden">
+      <div class="check" aria-hidden="true">✓</div>
+      <div id="done-title" class="done-title"></div>
+      <a class="cta" id="result-link" href="#" target="_blank" rel="noopener"></a>
+      <details class="summary-box" id="summary-box">
+        <summary>查看摘要</summary>
+        <div id="preview"></div>
+      </details>
+      <button id="btn-new" class="linkbtn">＋ 記錄新會議</button>
     </section>
 
     <div id="err" class="hidden"></div>

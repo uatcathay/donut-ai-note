@@ -119,13 +119,14 @@ function stopAndAnalyze() {
 }
 
 function setStep(id, state) {
-  const el = $(id);
-  el.className = `step ${state}`;
-  el.textContent = el.textContent.replace(/^[○⟳✓] /, state === 'done' ? '✓ ' : state === 'active' ? '⟳ ' : '○ ');
+  $(id).className = `step ${state}`.trim();
 }
 
 async function sendForProcessing() {
   show('processing');
+  setStep('s-upload', '');
+  setStep('s-analyze', '');
+  setStep('s-write', '');
   setStep('s-upload', 'active');
   const fd = new FormData();
   fd.set('title', $('title').value || '');
@@ -147,16 +148,20 @@ async function sendForProcessing() {
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function renderDone(body) {
+  $('done-title').textContent = body.title || '';
   const link = $('result-link');
   if (body.destination.type === 'notion') {
-    link.textContent = '📄 已寫入 Notion → 開啟會議記錄';
+    link.textContent = '開啟 Notion 記錄';
     link.href = body.destination.url;
+    link.classList.remove('is-file');
   } else {
-    link.textContent = `📄 已存成桌面檔案：${body.destination.filePath}`;
-    link.href = '#';
+    link.textContent = `已存成桌面檔案：${body.destination.filePath}`;
+    link.removeAttribute('href');
+    link.classList.add('is-file');
   }
   const points = body.keyPoints.map((p) => `<li>${esc(p)}</li>`).join('');
   $('preview').innerHTML = `<b>【摘要】</b><br>${esc(body.summary)}<br><br><b>【重點】</b><ul>${points}</ul><small>（完整逐字稿已另存）</small>`;
+  $('summary-box').open = false;
   show('done');
 }
 
