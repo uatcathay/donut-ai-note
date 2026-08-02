@@ -15,13 +15,15 @@
 - **零新依賴**：不得新增任何 npm 套件、CDN、建置步驟。`package.json` 不得改動。
 - **不動後端**：`src/`、`test/`、`scripts/`、`package.json`、`README.md` 一律不改。`npm test` 必須全程維持 **40 / 40 全綠**。
 - **CSS 留在 `public/index.html` 的 `<style>` 內**，不拆出 `.css` 檔（維持單次請求、零建置）。
-- **文案**：按鈕用英文（`Pause` / `Resume` / `Restart` / `Click to speak`）；其餘長句維持繁體中文。
+- **文案**：按鈕與處理中的階段文字用英文（`Pause` / `Resume` / `Restart` / `Click to speak` / `New AI Note` / `Uploading audio…` / `Analyzing with Gemini…`）；錯誤訊息等長句維持繁體中文。
 - **視窗尺寸**：所有版面須在 480×720 下可用且無橫向捲軸。
 - **深淺色**：以 `prefers-color-scheme` 切換，兩種模式都要能看。
 - **漸層色值**：`--grad-from: #F9C05C`、`--grad-to: #F52D8E`（已自 `assets/icon.png` 取樣）。所有漸層一律引用這兩個變數，不得寫死 hex。
 - **visualizer 尺寸**：相對參考元件等比放大 1.5 倍——bar 寬 3px、間距 3px、容器 288×24px（整排實寬 285px，仍在 `.stage` 的 320px 內，不需調整其他版面設定）。
 - **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 560px`（取自最高的完成頁）且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 32px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 固定 `height: 400px` 且自身捲動，不得撐破 `.stage`。
 - **完成頁**：不放勾勾圖示；摘要永遠展開不摺疊、固定高 400px、寬 `calc(100vw - 80px)`（距視窗左右各 40px）；標題字級 18px；「開啟 Notion 記錄」為文字樣式並置於摘要下方；「記錄新會議」文案為 `New AI Note`。
+- **處理中頁**：脈動圓環距內容區頂端 `80px`、與下方文字間距 `20px`、文字水平置中；不再是三行打勾清單，改為單行文字隨階段替換；只有兩個階段且皆由真實訊號驅動（`Uploading audio…` 至 XHR `upload` 的 `load` 事件；`Analyzing with Gemini…` 至回應抵達），不得以估時偽造進度。
+- **標題字級**：待機、錄音、完成三頁的標題一律 `18px`；標題槽高度 `36px`（18px 字放不進原本的 32px）。
 - **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、Restart 的確認對話框。
 
 ## 檔案結構
@@ -47,7 +49,7 @@ meeting-recorder/
 **Interfaces:**
 - Produces:
   - CSS 變數：`--grad-from`、`--grad-to`、`--fg`、`--fg-70`、`--fg-30`、`--fg-10`、`--bg`、`--ok`、`--danger`、`--danger-bg`（Task 2、3 直接使用）
-  - CSS 類別：`.stage`、`.panel`、`.hidden`、`.title-input`、`.orb`、`.mic`、`.cube`、`.timer`、`.wave`、`.bar`、`.hint`、`.linkbtn`、`.linkbtn--danger`、`.rec-title`、`.ring`、`.steps`、`.step`、`.done-title`、`.linkbtn.is-file`、`#preview`（Task 2、3 的標記直接套用）
+  - CSS 類別：`.stage`、`.panel`、`.hidden`、`.title-input`、`.orb`、`.mic`、`.cube`、`.timer`、`.wave`、`.bar`、`.hint`、`.linkbtn`、`.linkbtn--danger`、`.rec-title`、`.ring`、`.proc-stage`、`.done-title`、`.linkbtn.is-file`、`#preview`（Task 2、3 的標記直接套用）
   - `app.js` 常數 `BARS = 48` 與 `.wave` 填充迴圈（Task 2 的 `drawWave()` 依賴 `#wave .bar` 已存在）
 
 - [ ] **Step 1: 替換 `public/index.html` 的 `<style>` 區塊**
@@ -97,18 +99,18 @@ meeting-recorder/
     .hidden { display: none !important; }
 
     /* 標題：兩種狀態的槽位高度必須一致，否則切換時上方元素會位移 */
-    .title-input, .rec-title { height: 32px; margin-bottom: 32px; }
+    .title-input, .rec-title { height: 36px; margin-bottom: 32px; }
     .title-input {
       width: 100%; padding: 6px 0;
       border: 0; border-bottom: 1px solid transparent; outline: none;
       background: none; color: var(--fg);
-      font: inherit; font-size: 15px; text-align: center;
+      font: inherit; font-size: 18px; text-align: center;
     }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
     .rec-title {
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; text-align: center;
+      font-size: 18px; text-align: center;
     }
     /* 標題為空時保留空間，不可用 display:none（會抽掉槽位造成上移） */
     .rec-title.is-empty { visibility: hidden; }
@@ -173,7 +175,8 @@ meeting-recorder/
 
     /* 處理中 */
     .ring {
-      width: 64px; height: 64px; margin-bottom: 20px; border-radius: 50%;
+      width: 64px; height: 64px; border-radius: 50%;
+      margin-top: 80px; margin-bottom: 20px;
       background: conic-gradient(var(--grad-from), var(--grad-to), var(--grad-from));
       -webkit-mask: radial-gradient(circle, transparent 52%, #000 54%);
       mask: radial-gradient(circle, transparent 52%, #000 54%);
@@ -183,13 +186,7 @@ meeting-recorder/
       0%, 100% { opacity: .45; transform: scale(.94); }
       50% { opacity: 1; transform: scale(1); }
     }
-    .steps { display: flex; flex-direction: column; align-items: flex-start; }
-    .step { margin: 4px 0; font-size: 13px; color: var(--fg-30); }
-    .step::before { content: "○ "; }
-    .step.active { color: var(--fg); }
-    .step.active::before { content: "⟳ "; }
-    .step.done { color: var(--ok); }
-    .step.done::before { content: "✓ "; }
+    .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
 
     /* 完成 */
     .done-title { margin-bottom: 20px; font-size: 18px; text-align: center; }
@@ -446,26 +443,22 @@ git commit -m "feat: 錄音／暫停頁重做，48 根長條改由真實音量�
 
 **Files:**
 - Modify: `public/index.html`（`view-processing`、`view-done` 區塊）
-- Modify: `public/app.js`（`setStep`、`sendForProcessing`、`renderDone`）
+- Modify: `public/app.js`（移除 `setStep`、改寫 `sendForProcessing` 為 XHR、`renderDone`）
 
 **Interfaces:**
-- Consumes: Task 1 的 CSS 類別 `.ring`、`.steps`、`.step`、`.done-title`、`.linkbtn`、`.linkbtn.is-file`、`#preview`。
-- Produces: 新元素 `#done-title`；`#preview` 作為永遠展開、固定高 400px 的摘要區；`setStep(id, state)` 的新契約——`state` 為 `''`、`'active'`、`'done'` 三者之一，圖示與顏色全由 CSS 依 class 呈現，函式不再改動文字內容。
+- Consumes: Task 1 的 CSS 類別 `.ring`、`.proc-stage`、`.done-title`、`.linkbtn`、`.linkbtn.is-file`、`#preview`。
+- Produces: 新元素 `#done-title`、`#proc-stage`；`#preview` 作為永遠展開、固定高 400px 的摘要區；`setStage(text)` 取代舊的 `setStep(id, state)`——單行文字隨階段替換。
 
 - [ ] **Step 1: 替換 `view-processing` 的標記**
 
 ```html
     <section id="view-processing" class="panel hidden">
       <div class="ring" aria-hidden="true"></div>
-      <div class="steps">
-        <div class="step" id="s-upload">上傳音檔</div>
-        <div class="step" id="s-analyze">Gemini 分析中（逐字稿＋摘要＋重點）</div>
-        <div class="step" id="s-write">寫入輸出</div>
-      </div>
+      <div id="proc-stage" class="proc-stage" role="status" aria-live="polite"></div>
     </section>
 ```
 
-> 文字前方不再手寫 `○`，改由 `.step::before` 依 class 提供 `○` / `⟳` / `✓`。
+> 三行打勾清單改為單行；`role="status"` + `aria-live="polite"` 讓螢幕報讀器在階段變更時朗讀。
 
 - [ ] **Step 2: 替換 `view-done` 的標記**
 
@@ -478,36 +471,55 @@ git commit -m "feat: 錄音／暫停頁重做，48 根長條改由真實音量�
     </section>
 ```
 
-- [ ] **Step 3: 改寫 `app.js` 的 `setStep`**
+- [ ] **Step 3: 以 `setStage` 取代 `setStep`**
 
-把 `setStep()` 整個函式替換成：
+把 `setStep()` 整個函式刪除，換成：
 
 ```js
-function setStep(id, state) {
-  $(id).className = `step ${state}`.trim();
+function setStage(text) {
+  $('proc-stage').textContent = text;
 }
 ```
 
-- [ ] **Step 4: 在 `sendForProcessing()` 開頭重置三個步驟**
+- [ ] **Step 4: 改寫 `sendForProcessing()` 為 XHR，兩個階段皆由真實訊號驅動**
 
-在 `sendForProcessing()` 中，把開頭這兩行：
-
-```js
-  show('processing');
-  setStep('s-upload', 'active');
-```
-
-替換成：
+把 `sendForProcessing()` 整個函式替換成：
 
 ```js
+// 用 XMLHttpRequest 而非 fetch：fetch 沒有上傳進度事件，取不到「音檔傳完」這個真實訊號。
+function sendForProcessing() {
   show('processing');
-  setStep('s-upload', '');
-  setStep('s-analyze', '');
-  setStep('s-write', '');
-  setStep('s-upload', 'active');
+  setStage('Uploading audio…');
+  const fd = new FormData();
+  fd.set('title', $('title').value || '');
+  fd.set('audio', lastBlob, 'recording.webm');
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/process');
+    // 音檔實際傳完 → 進入分析階段（伺服器內部的分析與寫入無法再細分）
+    xhr.upload.addEventListener('load', () => setStage('Analyzing with Gemini…'));
+    xhr.addEventListener('load', () => {
+      try {
+        const body = JSON.parse(xhr.responseText);
+        if (!body.ok) throw new Error(body.message || '處理失敗');
+        renderDone(body);
+      } catch (e) {
+        showError(`處理失敗：${e.message}`, true);
+      }
+      resolve();
+    });
+    xhr.addEventListener('error', () => {
+      showError('處理失敗：無法連上伺服器', true);
+      resolve();
+    });
+    xhr.send(fd);
+  });
+}
 ```
 
-> 沒有這段的話，「用同一段錄音重試」時會沿用上一輪殘留的 `done` 狀態。
+> 回傳 Promise 讓 `mediaRecorder.onstop` 內既有的 `await sendForProcessing()` 維持有效。
+> 失敗時仍走 `showError(msg, true)`，保留 `lastBlob` 供「用同一段錄音重試」。
+> 不再需要重置步驟狀態——單行文字每次都會被重新寫入。
 
 - [ ] **Step 5: 改寫 `app.js` 的 `renderDone`**
 
@@ -651,6 +663,6 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 
 **3. 型別與命名一致性**
 - `BARS`（Task 1 Step 3 定義）僅用於填充迴圈；`drawWave()`（Task 2）改用 `bars.length`，不依賴該常數，無不一致。
-- `setStep(id, state)` 的 `state` 在 Task 3 Step 3 定義為 `''` / `'active'` / `'done'`，Task 3 Step 4 的呼叫與既有 `sendForProcessing()` 內的呼叫全部符合。
+- `setStage(text)` 在 Task 3 Step 3 定義，Step 4 的兩處呼叫（`Uploading audio…` / `Analyzing with Gemini…`）與之一致；舊的 `setStep` 已完全移除。
 - CSS 類別名稱在 Task 1 定義、Task 2–3 使用，逐一比對一致（`.linkbtn--danger`、`.linkbtn.is-file`、`.paused`）。
 - `#wave` 在 Task 1 仍是舊 canvas、Task 2 才變成 `.wave` 容器；Task 1 的填充迴圈以 `.wave` 選取，不會誤觸 canvas，順序安全。
