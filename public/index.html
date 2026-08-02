@@ -127,18 +127,21 @@
     .linkbtn.is-file { cursor: default; word-break: break-all; }
     .linkbtn.is-file:hover { background: none; }
 
-    /* 處理中 */
-    .ring {
-      width: 64px; height: 64px; border-radius: 50%;
+    /* 處理中：三顆圓點階梯式跳動 */
+    .ld-stairs {
+      display: flex; gap: 6px; align-items: flex-end;
       margin-top: 80px; margin-bottom: 20px;
-      background: conic-gradient(var(--grad-from), var(--grad-to), var(--grad-from));
-      -webkit-mask: radial-gradient(circle, transparent 52%, #000 54%);
-      mask: radial-gradient(circle, transparent 52%, #000 54%);
-      animation: pulse 1.6s ease-in-out infinite;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: .45; transform: scale(.94); }
-      50% { opacity: 1; transform: scale(1); }
+    .ld-stairs i {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
+      animation: stairs 1.2s ease-in-out infinite;
+    }
+    .ld-stairs i:nth-child(2) { animation-delay: .15s; }
+    .ld-stairs i:nth-child(3) { animation-delay: .3s; }
+    @keyframes stairs {
+      0%, 100% { transform: translateY(0); opacity: .3; }
+      50%      { transform: translateY(-14px); opacity: 1; }
     }
     .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
 
@@ -205,7 +208,7 @@
     </section>
 
     <section id="view-processing" class="panel hidden">
-      <div class="ring" aria-hidden="true"></div>
+      <div class="ld-stairs" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="proc-stage" role="status">Analyzing with Gemini…</div>
     </section>
 
