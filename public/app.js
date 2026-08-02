@@ -34,8 +34,10 @@ function stopTimer() { clearInterval(timerId); timerId = null; }
 const WAVE_MIN_HZ = 60;
 const WAVE_MAX_HZ = 6000;
 const WAVE_GAMMA = 1.4;        // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
-const WAVE_GATE = 10;          // 0–255；峰值低於此視為環境噪音，整排回到靜止高度
 const WAVE_PEAK_DECAY = 0.93;  // 峰值追隨器每幀的衰減率，越小則基準回落越快
+const WAVE_NOISE_RISE = 1.002; // 噪音底線每幀最多上升的比例（緩慢適應變吵的環境）
+const WAVE_NOISE_MARGIN = 1.8; // 要高於噪音底線這個倍數才算「有人在講話」，調大則更不敏感
+const WAVE_NOISE_FLOOR_MIN = 4;// 門檻的絕對下限，避免全然無聲的環境把門檻壓到 0
 
 function bandEdges(binCount, nyquist, bands) {
   return Array.from({ length: bands + 1 }, (_, i) => {
@@ -50,6 +52,7 @@ function drawWave() {
   const edges = bandEdges(data.length, audioCtx.sampleRate / 2, bars.length);
   const levels = new Float32Array(bars.length);
   let peak = 0;
+  let noiseFloor = 255;   // 由第一幀起自動校準到實際的環境底噪
   const render = () => {
     rafId = requestAnimationFrame(render);
     analyser.getByteFrequencyData(data);
@@ -62,12 +65,20 @@ function drawWave() {
       levels[i] = sum / (to - from);            // 0–255
       if (levels[i] > frameMax) frameMax = levels[i];
     }
+    // 噪音底線自動校準：瞬間跟上更安靜的環境，只緩慢適應變吵的環境，
+    // 因此它追的是「最安靜時的音量」＝這個房間的底噪，不會被說話聲拉高。
+    noiseFloor = frameMax < noiseFloor
+      ? frameMax
+      : Math.min(frameMax, noiseFloor * WAVE_NOISE_RISE + 0.05);
+    const gate = Math.max(WAVE_NOISE_FLOOR_MIN, noiseFloor * WAVE_NOISE_MARGIN);
+
     // 逐幀正規化：以當下的峰值為基準，講話大聲小聲都能撐滿整排。
     // 用會衰減的峰值追隨器而非直接取當幀最大值——後者會讓整排每幀劇烈重新縮放。
     peak = Math.max(frameMax, peak * WAVE_PEAK_DECAY);
-    const silent = peak < WAVE_GATE;              // 沒人講話時不要放大環境噪音
+    const range = peak - gate;
+    const silent = range <= 0;                    // 只有底噪時整排歸位，不放大環境噪音
     for (let i = 0; i < bars.length; i++) {
-      const level = silent ? 0 : (levels[i] / peak) ** WAVE_GAMMA;
+      const level = silent ? 0 : (Math.max(0, levels[i] - gate) / range) ** WAVE_GAMMA;
       bars[i].style.transform = `scaleY(${0.12 + level * 0.88})`;  // 12%–100%
     }
   };
