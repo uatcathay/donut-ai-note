@@ -255,6 +255,21 @@ $('title').addEventListener('input', autoGrowTitle);
 $('title').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
 autoGrowTitle();
 
+// 複製摘要：取 innerText（而非 innerHTML）才會拿到人看得懂的純文字，
+// 且 <li> 之間會保留換行。成功後短暫把圖示換成勾勾當作回饋。
+let copiedTimer = null;
+$('btn-copy').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText($('preview').innerText.trim());
+    const btn = $('btn-copy');
+    btn.classList.add('copied');
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => btn.classList.remove('copied'), 1500);
+  } catch {
+    showError('複製失敗，請手動選取摘要文字。');
+  }
+};
+
 $('btn-start').onclick = () => { clearError(); startRecording(); };
 $('btn-pause').onclick = togglePause;
 $('btn-stop').onclick = stopAndAnalyze;

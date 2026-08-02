@@ -13,6 +13,7 @@
       --fg-30: rgba(26, 26, 26, .3);
       --fg-10: rgba(26, 26, 26, .1);
       --bg: #ffffff;
+      --ok: #1a8a4a;
       --danger: #c0392b;
       --danger-bg: rgba(192, 57, 43, .1);
     }
@@ -23,6 +24,7 @@
         --fg-30: rgba(242, 242, 242, .3);
         --fg-10: rgba(242, 242, 242, .1);
         --bg: #131313;
+        --ok: #4ade80;
         --danger: #ff6b5e;
         --danger-bg: rgba(255, 107, 94, .12);
       }
@@ -56,8 +58,10 @@
       padding: 6px 0; border-bottom: 1px solid transparent;
       font-size: 18px; line-height: 1.4; text-align: center;
     }
+    /* 靠左對齊：游標位置跟著文字對齊走，置中時空欄位的游標會停在正中央。
+       錄音頁與完成頁的標題仍為置中（那兩處是顯示、非輸入）。 */
     .title-input {
-      width: 100%; display: block; resize: none; overflow-y: auto;
+      width: 100%; display: block; resize: none; overflow-y: auto; text-align: left;
       border: 0; border-bottom: 1px solid transparent; outline: none;
       background: none; color: var(--fg); font-family: inherit;
     }
@@ -150,15 +154,35 @@
     /* 完成 */
     .done-title { margin-bottom: 20px; }   /* 高度與字級由上方共用規則提供 */
     /* 摘要：永遠展開、固定高、距視窗左右各 40px（刻意寬於 .stage，靠置中突破）。
-       calc(100vw - 80px) 恆窄於 body 的內容框，不會產生橫向捲軸。 */
-    #preview {
+       calc(100vw - 80px) 恆窄於 body 的內容框，不會產生橫向捲軸。
+       複製鈕放在外層容器而非 #preview 內，否則會跟著內容一起捲走。 */
+    .preview-box {
+      position: relative;
       width: calc(100vw - 80px);
+      margin-bottom: 20px;
+    }
+    #preview {
+      width: 100%;
       height: 400px; overflow-y: auto;
-      margin-bottom: 20px; padding: 12px 14px; border-radius: 10px;
+      padding: 28px 14px 12px; border-radius: 10px;   /* 上緣多留 16px 給複製鈕 */
       background: var(--fg-10);
       font-size: 13px; line-height: 1.6;
       text-align: left;
     }
+    .copy-btn {
+      position: absolute; top: 6px; right: 6px; z-index: 1;
+      width: 28px; height: 28px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      border: 0; border-radius: 6px; background: none;
+      color: var(--fg-30); cursor: pointer;
+      transition: background-color .2s, color .2s;
+    }
+    .copy-btn:hover { background: var(--fg-10); color: var(--fg-70); }
+    .copy-btn .ico { width: 15px; height: 15px; }
+    .copy-btn .ico-check { display: none; }
+    .copy-btn.copied { color: var(--ok); }
+    .copy-btn.copied .ico-copy { display: none; }
+    .copy-btn.copied .ico-check { display: block; }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
 
     /* 確認對話框（原生 <dialog>：外觀自訂，焦點鎖定與 Esc 關閉由瀏覽器提供） */
@@ -216,7 +240,20 @@
 
     <section id="view-done" class="panel hidden">
       <div id="done-title" class="done-title"></div>
-      <div id="preview"></div>
+      <div class="preview-box">
+        <button id="btn-copy" class="copy-btn" title="複製摘要" aria-label="複製摘要">
+          <svg class="ico ico-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <svg class="ico ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </button>
+        <div id="preview"></div>
+      </div>
       <a class="linkbtn" id="result-link" href="#" target="_blank" rel="noopener"></a>
       <button id="btn-new" class="linkbtn">New AI Note</button>
     </section>
