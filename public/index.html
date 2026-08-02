@@ -58,13 +58,14 @@
       padding: 6px 0; border-bottom: 1px solid transparent;
       font-size: 18px; line-height: 1.4; text-align: center;
     }
-    /* 靠左對齊：游標位置跟著文字對齊走，置中時空欄位的游標會停在正中央。
-       錄音頁與完成頁的標題仍為置中（那兩處是顯示、非輸入）。 */
     .title-input {
-      width: 100%; display: block; resize: none; overflow-y: auto; text-align: left;
+      width: 100%; display: block; resize: none; overflow-y: auto;
       border: 0; border-bottom: 1px solid transparent; outline: none;
       background: none; color: var(--fg); font-family: inherit;
     }
+    /* 空欄位時不顯示游標——置中對齊下，正中央一條閃爍直線很突兀。
+       一旦有文字就恢復顯示，否則打字時看不到插入點、無法修改中間的字。 */
+    .title-input:placeholder-shown { caret-color: transparent; }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
     /* 錄音頁／完成頁：最多兩行，超出以 … 截斷 */
