@@ -150,6 +150,17 @@
     }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
 
+    /* 確認對話框（原生 <dialog>：外觀自訂，焦點鎖定與 Esc 關閉由瀏覽器提供） */
+    .dialog {
+      max-width: 280px; padding: 20px; border: 0; border-radius: 12px;
+      background: var(--bg); color: var(--fg); text-align: center;
+    }
+    .dialog::backdrop { background: rgba(0, 0, 0, .45); }
+    .dialog-msg { margin: 0 0 20px; font-size: 14px; line-height: 1.5; }
+    .dialog-actions { display: flex; justify-content: center; gap: 8px; }
+    /* 對話框內兩顆按鈕並排，需抵銷 .linkbtn + .linkbtn 的垂直間距 */
+    .dialog-actions .linkbtn + .linkbtn { margin-top: 0; }
+
     /* 錯誤 */
     #err {
       margin-top: 16px; padding: 10px 12px; border-radius: 10px;
@@ -189,7 +200,7 @@
 
     <section id="view-processing" class="panel hidden">
       <div class="ring" aria-hidden="true"></div>
-      <div id="proc-stage" class="proc-stage" role="status" aria-live="polite"></div>
+      <div class="proc-stage">Analyzing with Gemini…</div>
     </section>
 
     <section id="view-done" class="panel hidden">
@@ -202,6 +213,14 @@
     <div id="err" class="hidden"></div>
     <button id="btn-retry" class="linkbtn hidden">↻ 用同一段錄音重試</button>
   </main>
+
+  <dialog id="confirm-restart" class="dialog">
+    <p class="dialog-msg">確定要丟掉目前錄音、重新開始嗎？</p>
+    <div class="dialog-actions">
+      <button id="btn-cancel-restart" class="linkbtn">Cancel</button>
+      <button id="btn-confirm-restart" class="linkbtn linkbtn--danger">Restart</button>
+    </div>
+  </dialog>
 
   <script src="app.js" type="module"></script>
 </body>

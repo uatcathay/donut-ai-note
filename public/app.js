@@ -99,7 +99,10 @@ function cleanupStream() {
 }
 
 function restartRecording() {
-  if (!confirm('確定要丟掉目前錄音、重新開始嗎？')) return;
+  $('confirm-restart').showModal();
+}
+
+function discardRecording() {
   try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch {}
   cleanupStream();
   mediaRecorder = null;
@@ -118,38 +121,19 @@ function stopAndAnalyze() {
   mediaRecorder.stop();
 }
 
-function setStage(text) {
-  $('proc-stage').textContent = text;
-}
-
-// 用 XMLHttpRequest 而非 fetch：fetch 沒有上傳進度事件，取不到「音檔實際傳完」這個真實訊號。
-function sendForProcessing() {
+async function sendForProcessing() {
   show('processing');
-  setStage('Uploading audio…');
   const fd = new FormData();
   fd.set('title', $('title').value || '');
   fd.set('audio', lastBlob, 'recording.webm');
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/process');
-    // 音檔實際傳完 → 進入分析階段（伺服器內部的分析與寫入無法再細分）
-    xhr.upload.addEventListener('load', () => setStage('Analyzing with Gemini…'));
-    xhr.addEventListener('load', () => {
-      try {
-        const body = JSON.parse(xhr.responseText);
-        if (!body.ok) throw new Error(body.message || '處理失敗');
-        renderDone(body);
-      } catch (e) {
-        showError(`處理失敗：${e.message}`, true);
-      }
-      resolve();
-    });
-    xhr.addEventListener('error', () => {
-      showError('處理失敗：無法連上伺服器', true);
-      resolve();
-    });
-    xhr.send(fd);
-  });
+  try {
+    const res = await fetch('/api/process', { method: 'POST', body: fd });
+    const body = await res.json();
+    if (!body.ok) throw new Error(body.message || '處理失敗');
+    renderDone(body);
+  } catch (e) {
+    showError(`處理失敗：${e.message}`, true);
+  }
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -188,6 +172,8 @@ $('btn-start').onclick = () => { clearError(); startRecording(); };
 $('btn-pause').onclick = togglePause;
 $('btn-stop').onclick = stopAndAnalyze;
 $('btn-restart').onclick = restartRecording;
+$('btn-cancel-restart').onclick = () => $('confirm-restart').close();
+$('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
 $('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };
 $('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
