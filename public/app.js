@@ -35,9 +35,11 @@ const WAVE_MIN_HZ = 60;
 const WAVE_MAX_HZ = 6000;
 const WAVE_GAMMA = 1.4;        // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
 const WAVE_PEAK_DECAY = 0.93;  // 峰值追隨器每幀的衰減率，越小則基準回落越快
-const WAVE_SPEECH_SPAN = 8;    // 超出死區多少（0–255）即視為滿強度；調大則更不敏感
-const WAVE_NOISE_DEV_K = 4;    // 死區＝底噪平均 + 波動幅度 × 此倍數；調大則更不容易被底噪觸發
-const WAVE_NOISE_ADAPT = 0.02; // 底噪統計的適應速率
+const WAVE_SPEECH_SPAN = 20;   // 超出死區多少（0–255）即視為滿強度；調大則更不敏感
+const WAVE_NOISE_BLOCK = 300;  // 底噪視窗的區塊長度（幀）；實際視窗為 5–10 秒
+const WAVE_NOISE_MULT = 1.8;   // 死區＝底噪 × 此倍數 + 下方常數
+const WAVE_NOISE_ADD = 6;
+const WAVE_NOISE_MIN = 15;     // 死區的絕對下限，避免極安靜的環境把死區壓到 0
 
 function bandEdges(binCount, nyquist, bands) {
   return Array.from({ length: bands + 1 }, (_, i) => {
@@ -63,8 +65,9 @@ function drawWave() {
   const edges = bandEdges(data.length, audioCtx.sampleRate / 2, bars.length);
   const levels = new Float32Array(bars.length);
   let peak = 0;
-  let noiseMean = null;   // 底噪的平均值，由第一幀起自動校準
-  let noiseDev = 3;       // 底噪自身的波動幅度
+  let prevBlockMin = Infinity;   // 上一個區塊的最低平均音量
+  let blockMin = Infinity;       // 目前區塊的最低平均音量
+  let blockFrames = 0;
   let frame = 0;
   const render = () => {
     rafId = requestAnimationFrame(render);
@@ -84,17 +87,21 @@ function drawWave() {
 
     // 靜音判定：拿整排的「平均值」跟底噪比，而不是最大值——單一頻格的雜訊尖峰
     // 會讓最大值劇烈跳動，平均則穩定得多。
-    // 死區取「底噪平均 + 波動幅度 × 4」：底噪本身持續在平均值上下起伏，
-    // 只扣掉平均並不夠，必須連它的波動一起讓過，安靜時整排才會真正靜止。
-    if (noiseMean === null) noiseMean = frameMean;
-    const deadzone = noiseMean + noiseDev * WAVE_NOISE_DEV_K;
-    const strength = Math.min(1, Math.max(0, (frameMean - deadzone) / WAVE_SPEECH_SPAN));
-    // 只在判定為安靜時更新底噪統計，否則說話聲會把底噪一起拉高
-    if (strength < 0.5) {
-      const d = frameMean - noiseMean;
-      noiseMean += d * WAVE_NOISE_ADAPT;
-      noiseDev += (Math.abs(d) - noiseDev) * WAVE_NOISE_ADAPT;
+    //
+    // 底噪估計＝最近約 5–10 秒的最低平均音量（兩個區塊的滑動視窗最小值）。
+    // 為什麼是最小值而不是移動平均：移動平均會被說話聲拉高，而一旦拉高就形成
+    // 正回饋死鎖——死區跟著升高、更多語音被當成底噪、最終整排在說話中途凍住。
+    // 最小值在結構上不可能被說話聲拉高（語音在 10 秒內必有字詞間隙落回底噪），
+    // 房間變吵時則會在一個視窗內自動適應。
+    blockMin = Math.min(blockMin, frameMean);
+    if (++blockFrames >= WAVE_NOISE_BLOCK) {
+      prevBlockMin = blockMin;
+      blockMin = Infinity;
+      blockFrames = 0;
     }
+    const noiseFloor = Math.min(prevBlockMin, blockMin);
+    const deadzone = Math.max(WAVE_NOISE_MIN, noiseFloor * WAVE_NOISE_MULT + WAVE_NOISE_ADD);
+    const strength = Math.min(1, Math.max(0, (frameMean - deadzone) / WAVE_SPEECH_SPAN));
 
     // 逐幀正規化：以當下的峰值為基準，講話大聲小聲都能撐滿整排。
     // 用會衰減的峰值追隨器而非直接取當幀最大值——後者會讓整排每幀劇烈重新縮放。
@@ -102,10 +109,9 @@ function drawWave() {
 
     if (dbgEl && frame % 6 === 0) {
       dbgEl.textContent =
-        `frameMean ${frameMean.toFixed(1).padStart(6)}   frameMax ${frameMax.toFixed(1).padStart(6)}\n` +
-        `noiseMean ${noiseMean.toFixed(1).padStart(6)}   noiseDev ${noiseDev.toFixed(2).padStart(6)}\n` +
-        `deadzone  ${deadzone.toFixed(1).padStart(6)}   peak     ${peak.toFixed(1).padStart(6)}\n` +
-        `strength  ${strength.toFixed(2).padStart(6)}`;
+        `frameMean  ${frameMean.toFixed(1).padStart(6)}   frameMax ${frameMax.toFixed(1).padStart(6)}\n` +
+        `noiseFloor ${noiseFloor.toFixed(1).padStart(6)}   deadzone ${deadzone.toFixed(1).padStart(6)}\n` +
+        `peak       ${peak.toFixed(1).padStart(6)}   strength ${strength.toFixed(2).padStart(6)}`;
     }
     frame += 1;
 
