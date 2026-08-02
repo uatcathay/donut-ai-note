@@ -130,11 +130,10 @@
     .linkbtn.is-file:hover { background: none; }
 
     /* 處理中：三個方塊階梯式跳動（尺寸為參考來源的 1.5 倍，與 visualizer 的放大倍率一致）。
-       本頁是唯一垂直置中的狀態——它沒有需要與其他頁對齊的共用元素，置中不會造成對齊問題。 */
-    #view-processing { min-height: inherit; justify-content: center; }
+       與其他三頁一樣靠上固定，距內容區頂端 200px。 */
     .ld-stairs {
       display: flex; gap: 9px; align-items: flex-end;
-      margin-bottom: 20px;
+      margin-top: 200px; margin-bottom: 20px;
     }
     .ld-stairs i {
       width: 18px; height: 18px; border-radius: 2px;
