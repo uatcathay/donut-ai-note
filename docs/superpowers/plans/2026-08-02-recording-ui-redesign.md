@@ -15,16 +15,17 @@
 - **零新依賴**：不得新增任何 npm 套件、CDN、建置步驟。`package.json` 不得改動。
 - **不動後端**：`src/`、`test/`、`scripts/`、`package.json`、`README.md` 一律不改。`npm test` 必須全程維持 **40 / 40 全綠**。
 - **CSS 留在 `public/index.html` 的 `<style>` 內**，不拆出 `.css` 檔（維持單次請求、零建置）。
-- **文案**：按鈕與處理中的階段文字用英文（`Pause` / `Resume` / `Restart` / `Click to speak` / `New AI Note` / `Uploading audio…` / `Analyzing with Gemini…`）；錯誤訊息等長句維持繁體中文。
+- **文案**：按鈕與處理中文字用英文（`Pause` / `Resume` / `Restart` / `Click to speak` / `New AI Note` / `Analyzing with Gemini…` / `Cancel`）；錯誤訊息等長句維持繁體中文。
 - **視窗尺寸**：所有版面須在 480×720 下可用且無橫向捲軸。
 - **深淺色**：以 `prefers-color-scheme` 切換，兩種模式都要能看。
 - **漸層色值**：`--grad-from: #F9C05C`、`--grad-to: #F52D8E`（已自 `assets/icon.png` 取樣）。所有漸層一律引用這兩個變數，不得寫死 hex。
 - **visualizer 尺寸**：相對參考元件等比放大 1.5 倍——bar 寬 3px、間距 3px、容器 288×24px（整排實寬 285px，仍在 `.stage` 的 320px 內，不需調整其他版面設定）。
 - **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 560px`（取自最高的完成頁）且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 32px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 固定 `height: 400px` 且自身捲動，不得撐破 `.stage`。
 - **完成頁**：不放勾勾圖示；摘要永遠展開不摺疊、固定高 400px、寬 `calc(100vw - 80px)`（距視窗左右各 40px）；標題字級 18px；「開啟 Notion 記錄」為文字樣式並置於摘要下方；「記錄新會議」文案為 `New AI Note`。
-- **處理中頁**：脈動圓環距內容區頂端 `80px`、與下方文字間距 `20px`、文字水平置中；不再是三行打勾清單，改為單行文字隨階段替換；只有兩個階段且皆由真實訊號驅動（`Uploading audio…` 至 XHR `upload` 的 `load` 事件；`Analyzing with Gemini…` 至回應抵達），不得以估時偽造進度。
+- **處理中頁**：脈動圓環距內容區頂端 `80px`、與下方文字間距 `20px`、文字水平置中；不再是三行打勾清單，改為**單行固定文字** `Analyzing with Gemini…`，不做階段性變化（`sendForProcessing()` 因此維持使用 `fetch`）。
 - **標題字級**：待機、錄音、完成三頁的標題一律 `18px`；標題槽高度 `36px`（18px 字放不進原本的 32px）。
-- **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、Restart 的確認對話框。
+- **Restart 確認**：改為頁面內的自訂 `<dialog>` + `showModal()`，取代原生 `confirm()`；Cancel 與 Esc 都不得丟棄錄音。
+- **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、丟棄錄音前必須先確認。
 
 ## 檔案結構
 
@@ -559,7 +560,7 @@ Expected: `node --check` 無輸出；`tests 40 / pass 40 / fail 0`。
 Run: `npm start`，錄一段 10 秒左右的話並停止。
 
 Expected：
-- 處理中：脈動漸層圓環距內容區頂端 80px、下方 20px 處為置中單行文字；文字先顯示 `Uploading audio…`，音檔傳完後換成 `Analyzing with Gemini…`。
+- 處理中：脈動漸層圓環距內容區頂端 80px、下方 20px 處為置中的固定文字 `Analyzing with Gemini…`。
 - 完成：會議標題（18px）→ 灰底摘要區（固定 400px 高、距視窗左右各 40px、內容超出時自身捲動）→ 文字樣式的「開啟 Notion 記錄」（未設定 Notion 時改顯示 `.md` 檔路徑且不可點）→「New AI Note」。
 - 完成頁不應出現勾勾圖示、也沒有「查看摘要」摺疊。
 - 按「New AI Note」回待機頁，標題輸入已清空。
@@ -619,7 +620,7 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 - [ ] 說話時長條隨音量起伏。
 - [ ] `Pause` → 方塊停轉、計時器停、長條凍結、字變 `Resume`；`Resume` 後全部恢復。
 - [ ] `Pause` 與 `Restart` 的間距、visualizer 與 `Pause` 的間距，目視皆為 20px（可用 DevTools 量測確認）。
-- [ ] `Restart` 跳確認框，確認後歸零回待機。
+- [ ] `Restart` 跳出自訂對話框；Cancel 與 Esc 都不丟棄錄音，Restart 才歸零回待機。
 - [ ] 完成後 Notion 資料庫確實新增一列（或桌面出現 `.md` 檔），內容正確。
 - [ ] 用一場較長的會議驗證：摘要區固定 400px 高、內容超出時自身出現捲軸，下方「開啟 Notion 記錄」與「New AI Note」仍在畫面內。
 - [ ] 麥克風權限拒絕時顯示繁中錯誤訊息。

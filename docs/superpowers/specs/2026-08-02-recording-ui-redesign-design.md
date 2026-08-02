@@ -27,9 +27,11 @@
 | 配色 | 黑白極簡分層 + 橘粉漸層點綴（呼應 App 圖示） |
 | 明暗 | 跟隨系統 `prefers-color-scheme` |
 | 停止並分析 | 中央大按鈕（錄音時為旋轉方塊）即停止鈕 |
-| 文案語言 | 按鈕用英文（Pause / Resume / Restart / Click to speak），其餘長句維持繁體中文 |
+| 文案語言 | 按鈕與處理中文字用英文（Pause / Resume / Restart / Click to speak / New AI Note / Analyzing with Gemini…），錯誤訊息等長句維持繁體中文 |
 | 會議標題 | 保留，待機頁中央按鈕上方的無框輸入 |
-| 完成頁摘要 | 預設摺疊，點「查看摘要」展開 |
+| 完成頁摘要 | 常駐展開，固定高 400px、自身捲動 |
+| 標題字級 | 待機／錄音／完成三頁一律 18px，槽位高 36px |
+| Restart 確認 | 頁面內自訂 `<dialog>`，取代原生 confirm() |
 
 ## 非目標（YAGNI）
 
@@ -52,12 +54,14 @@
 ### app.js 的三處調整
 
 1. `drawWave()` / `stopWave()`：從單一 canvas 長條改為驅動 48 個 DOM `<span>`。
-2. `setStep()` 與 `renderDone()`：配合新標記（步驟圖示改由 CSS 呈現、完成頁多一層摺疊容器與標題顯示）。
-3. `togglePause()`：按鈕文字 `⏸ 暫停` / `▶ 繼續` → `Pause` / `Resume`；**移除對 `rec-label` 的兩行寫入**（見下）。
+2. 移除 `setStep()`：處理中頁改為單行固定文字，不再需要逐步驟切換 class。
+3. `renderDone()`：配合新標記（`#done-title`、常駐的 `#preview`、文字樣式的結果連結）。
+4. `togglePause()`：按鈕文字 `⏸ 暫停` / `▶ 繼續` → `Pause` / `Resume`；**移除對 `rec-label` 的兩行寫入**（見下）。
+5. `restartRecording()`：由原生 `confirm()` 改為開啟自訂 `<dialog>`，實際歸零邏輯抽成獨立函式供對話框的確認鈕呼叫。
 
 ### 元素 id 沿用
 
-`title`、`btn-start`、`btn-pause`、`btn-stop`、`btn-restart`、`btn-new`、`btn-retry`、`timer`、`s-upload`、`s-analyze`、`s-write`、`result-link`、`preview`、`err`、四個 `view-*` 容器 — **全數沿用**，把 app.js 改動壓到最小。
+`title`、`btn-start`、`btn-pause`、`btn-stop`、`btn-restart`、`btn-new`、`btn-retry`、`timer`、`result-link`、`preview`、`err`、四個 `view-*` 容器 — **全數沿用**（`s-upload` / `s-analyze` / `s-write` 隨三步驟清單一併移除，改為單一 `#proc-stage`），把 app.js 改動壓到最小。
 
 **結構性變動（三處，實作時必須同步改 app.js）**：
 
@@ -65,7 +69,7 @@
 |---|---|
 | `<canvas id="wave">` → `<div id="wave">` | 內含 48 個 `<span class="bar">`；`drawWave()` 改寫入目標 |
 | **移除 `rec-label`** | 原本顯示「錄音中／已暫停」的文字，其位置在新設計中由 `Pause` / `Resume` 按鈕取代（狀態已由按鈕文字表達）。`togglePause()` 內兩行 `$('rec-label').textContent = ...` 必須一併刪除，否則會拋出 null 錯誤 |
-| **新增 `rec-title`、`done-title`** | 錄音中與完成頁的會議標題靜態顯示。開始錄音時由 `#title` 的值寫入 `rec-title`；`renderDone()` 寫入 `done-title`。兩者在標題為空時隱藏（`hidden` class） |
+| **新增 `rec-title`、`done-title`、`proc-stage`** | 前兩者為錄音中與完成頁的會議標題靜態顯示（開始錄音時由 `#title` 寫入 `rec-title`；`renderDone()` 寫入 `done-title`）。`rec-title` 在標題為空時用 `.is-empty`（`visibility: hidden`）保留槽位。`proc-stage` 為處理中頁的單行文字 |
 
 ---
 
@@ -78,7 +82,7 @@
 **版面位置穩定（硬性要求）**：切換狀態時，中央大按鈕與其上方的所有元素**不得產生任何垂直位移**。做法：
 
 - `.stage` 設固定 `min-height: 560px`（取自最高的完成頁），內容自固定頂端起排（`justify-content: flex-start`），使外框高度不隨內容變動，垂直置中的結果因此恆定。
-- 標題槽在待機與錄音兩種狀態下**高度必須相同**（`.title-input` 與 `.rec-title` 皆為 32px + 32px 下邊距）。
+- 標題槽在待機與錄音兩種狀態下**高度必須相同**（`.title-input` 與 `.rec-title` 皆為 36px + 32px 下邊距；36px 是為了容納 18px 字級）。
 - 標題為空時，`.rec-title` 以 `visibility: hidden` 保留空間，**不得用 `display: none`**（後者會抽掉整個槽位造成上移）。
 - 下方控制項的數量在各狀態不同是允許的——因為採頂端對齊，它們的高度差不會推動上方元素。
 - 完成頁的摘要高度固定 `400px` 且自身捲動，不得撐破 `.stage` 的固定高度。
@@ -94,9 +98,9 @@
    ↕ 8px
 visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參考元件等比放大 1.5 倍）
    ↕ 20px
-主控制項（Pause / Click to speak / 步驟清單 / 完成資訊）
+主控制項（Pause / Click to speak）
    ↕ 20px
-次控制項（Restart / 記錄新會議）
+次控制項（Restart）
 ```
 
 `8px` 群組維持參考元件的緊湊感；`20px` 為使用者指定值，套用於 visualizer 之下與兩個控制項之間。
@@ -127,7 +131,7 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
 ```
 
 - 中央旋轉方塊 = 停止並分析（`btn-stop`）。為避免「不知道要點它」，按鈕加 `title="停止並分析"` 屬性（原生 tooltip，不另寫 CSS）與 `aria-label`。
-- `Restart` 沿用既有確認對話框。
+- `Restart` 的確認改為**頁面內的自訂對話框**（原生 `<dialog>` + `showModal()`），取代瀏覽器的 `confirm()`：外觀由 CSS 控制、與整體視覺一致，而焦點鎖定、Esc 關閉、背景遮罩由瀏覽器內建提供。按鈕為 `Cancel` / `Restart`，取消或 Esc 都不會丟棄錄音。
 
 ### 狀態三：暫停（錄音中的子狀態）
 
@@ -149,18 +153,13 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
         （距內容區頂端 80px）
         （脈動的漸層環）
              ↕ 20px
-      Uploading audio…        ← 單行，隨階段替換，置中
+      Analyzing with Gemini…  ← 單行固定文字，置中
 ```
 
 - 中央為緩慢脈動的橘粉圓環（呼應 App 圖示的甜甜圈造型），距內容區頂端 `80px`，與下方文字間距 `20px`。
-- **不再是三行打勾清單**，改為單行文字隨階段替換，水平置中對齊圓環。
-- 兩個階段，**皆由真實訊號驅動**：
-  1. `Uploading audio…` — 送出請求起，至 XHR 的 `upload` `load` 事件觸發（音檔實際傳完）。
-  2. `Analyzing with Gemini…` — 上傳完成起，至回應抵達。
-
-**為何只有兩段**：`/api/process` 是單一請求，伺服器內部依序完成分析與寫入，前端收不到兩者的交界訊號。原本規劃的第三段（寫入中）無法以真實訊號呈現，故捨棄，不以估時或事後補顯的方式偽造進度。
-
-**實作影響**：`sendForProcessing()` 需由 `fetch` 改為 `XMLHttpRequest`——`fetch` 無上傳進度事件，取不到「上傳完成」訊號。錯誤處理語意維持不變（失敗時 `showError(msg, true)`，保留 `lastBlob` 供重試）。
+- **不再是三行打勾清單**，改為**單行固定文字** `Analyzing with Gemini…`，水平置中對齊圓環。
+- **不做階段性文字變化**。曾評估過兩段式（`Uploading audio…` → `Analyzing with Gemini…`），因上傳到 localhost 幾乎瞬間完成、第一段只會一閃而過，實測後決定捨棄。
+- 因此 `sendForProcessing()` 維持使用 `fetch`（改用 XHR 的唯一理由是取得上傳完成訊號，已不需要）。
 
 ### 狀態五：完成（`view-done`）
 
@@ -206,7 +205,7 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
 ## 配色與明暗
 
 - 黑白層級以 CSS 變數定義（文字、次要文字、邊框、底色四級），深淺色各一組，由 `prefers-color-scheme: dark` 切換。
-- 橘粉漸層為單一組色值，深淺色共用，僅用於三處：錄音中的旋轉方塊與長條、處理中的脈動圓環、完成頁的勾勾與主按鈕。
+- 橘粉漸層為單一組色值，深淺色共用，僅用於兩處：錄音中的旋轉方塊與長條、處理中的脈動圓環。（完成頁改為純文字控制項後不再使用漸層。）
 - 漸層色值：實作時自 `assets/icon.png` 取樣橘、粉兩個端點色，寫成 `--grad-from` / `--grad-to` 兩個 CSS 變數，所有漸層引用這兩個變數（日後換圖示只需改兩行）。
 
 ---
@@ -220,7 +219,7 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
 - `pagehide` 送 `navigator.sendBeacon('/shutdown')`（「關窗即結束」的關鍵）。
 - Notion / `.md` 兩種輸出分支的顯示差異。
 - `esc()` 對摘要與重點的 XSS 跳脫。
-- `Restart` 的確認對話框。
+- `Restart` 前的確認（實作由原生 `confirm()` 改為自訂 `<dialog>`，但「必須先確認才丟棄錄音」這個行為不變）。
 
 ---
 
@@ -231,13 +230,13 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
 **回歸防護**：`npm test` 應維持 40 / 40 全綠（後端未動）。
 
 **手動清單**：
-- [ ] 四狀態切換正確：待機 → 錄音中 → 處理中 → 完成 → 記錄新會議回到待機。
+- [ ] 四狀態切換正確：待機 → 錄音中 → 處理中 → 完成 → New AI Note 回到待機。
 - [ ] 暫停：方塊停轉、計時器停走、長條凍結、文字變 `Resume`；繼續後三者恢復。
 - [ ] 暫停中點中央方塊可直接停止並分析。
-- [ ] Restart：跳確認框，確認後歸零回待機。
+- [ ] Restart：跳出自訂對話框；Cancel 與 Esc 都不丟棄錄音，Restart 才歸零回待機。
 - [ ] 長條隨真實說話音量起伏（不是隨機跳動）。
 - [ ] 端到端：錄音 → Gemini 分析 → 寫入 Notion 資料庫一列，或桌面 `.md`。
-- [ ] 完成頁摘要摺疊／展開；用長摘要驗證下方按鈕不被擠出畫面。
+- [ ] 完成頁摘要常駐、固定 400px 高；用長摘要驗證摘要區自身捲動、下方控制項不被擠出畫面。
 - [ ] 深色與淺色模式各檢視四狀態一次。
 - [ ] 480×720 小窗下無橫向捲軸。
 - [ ] 麥克風權限拒絕時顯示正確訊息。
@@ -247,7 +246,7 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
 
 ## 全域約束（沿用）
 
-- 長句 UI 文案為繁體中文；按鈕文案為英文（本次新增的例外，已明列於設計決策）。
+- 錯誤訊息等長句為繁體中文；按鈕與處理中文字為英文（本次新增的例外，已明列於設計決策）。
 - API key 只存本機 `.env`，不進前端／版控。
 - 本機執行，不引入需付費或重量級相依。
 - 後端行為與測試不得因本次變更而破壞。
