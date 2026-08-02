@@ -10,6 +10,8 @@
 
 **Spec:** [docs/superpowers/specs/2026-08-02-recording-ui-redesign-design.md](../specs/2026-08-02-recording-ui-redesign-design.md)
 
+> **注意**：各 Task 的內文是當時的實作快照，歷經多輪修訂後已與現況不符；具約束力的僅上方 Global Constraints 段落與 spec。
+
 ## Global Constraints
 
 - **零新依賴**：不得新增任何 npm 套件、CDN、建置步驟。`package.json` 不得改動。
@@ -23,7 +25,7 @@
 - **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 580px`（取自最高的完成頁：兩行標題時約 568px）且 `justify-content: flex-start`；三個標題元素同為 `min-height: calc(1.4em + 13px)` + `margin-bottom: 52px` + `line-height: 1.4`，且**最多兩行**（待機頁為 `<textarea>` 自動長高至上限兩行、超過則欄位內捲動；錄音頁與完成頁為 `-webkit-line-clamp: 2` 加 `…`）——高度有界，長標題不會推動麥克風；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 固定 `height: 400px` 且自身捲動，不得撐破 `.stage`。
 - **完成頁**：不放勾勾圖示；摘要永遠展開不摺疊、固定高 400px、寬 `calc(100vw - 80px)`（距視窗左右各 40px）；標題字級 18px；「開啟 Notion 記錄」為文字樣式並置於摘要下方；「記錄新會議」文案為 `New AI Note`。
 - **處理中頁**：三顆方塊的階梯式跳動載入動畫（`.ld-stairs`，18px、間距 9px、跳躍 21px）與下方文字間距 `20px`，整組**靠上固定**，距內容區頂端 `200px`；不再是三行打勾清單，改為**單行固定文字** `Analyzing with Gemini…`，不做階段性變化（`sendForProcessing()` 因此維持使用 `fetch`）。
-- **標題字級**：待機、錄音、完成三頁的標題一律 `18px`；標題槽高度 `36px`（18px 字放不進原本的 32px）。
+- **標題字級**：待機、錄音、完成三頁的標題一律 `18px`；槽位高度由上述 `min-height: calc(1.4em + 13px)`（一行行高 + 12px padding + 1px 底線）決定。
 - **Restart 確認**：改為頁面內的自訂 `<dialog>` + `showModal()`，取代原生 `confirm()`；Cancel 與 Esc 都不得丟棄錄音。
 - **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、丟棄錄音前必須先確認。
 
@@ -582,7 +584,7 @@ Expected: `git status --short` 無輸出；`tests 40 / pass 40 / fail 0`。
 
 Run:
 ```bash
-git diff fedc8e3 --stat -- package.json package-lock.json src test scripts README.md
+git diff main...ui-redesign --stat -- package.json package-lock.json src test scripts README.md
 ```
 Expected: 無輸出（這些檔案在本次重做中完全沒動）。
 
