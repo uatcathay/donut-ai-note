@@ -46,7 +46,7 @@ meeting-recorder/
 **Interfaces:**
 - Produces:
   - CSS 變數：`--grad-from`、`--grad-to`、`--fg`、`--fg-70`、`--fg-30`、`--fg-10`、`--bg`、`--ok`、`--danger`、`--danger-bg`（Task 2、3 直接使用）
-  - CSS 類別：`.stage`、`.panel`、`.hidden`、`.title-input`、`.orb`、`.orb--rec`、`.mic`、`.cube`、`.timer`、`.wave`、`.bar`、`.hint`、`.linkbtn`、`.linkbtn--danger`、`.rec-title`、`.ring`、`.steps`、`.step`、`.check`、`.done-title`、`.cta`、`.cta.is-file`、`.summary-box`（Task 2、3 的標記直接套用）
+  - CSS 類別：`.stage`、`.panel`、`.hidden`、`.title-input`、`.orb`、`.mic`、`.cube`、`.timer`、`.wave`、`.bar`、`.hint`、`.linkbtn`、`.linkbtn--danger`、`.rec-title`、`.ring`、`.steps`、`.step`、`.check`、`.done-title`、`.cta`、`.cta.is-file`、`.summary-box`（Task 2、3 的標記直接套用）
   - `app.js` 常數 `BARS = 48` 與 `.wave` 填充迴圈（Task 2 的 `drawWave()` 依賴 `#wave .bar` 已存在）
 
 - [ ] **Step 1: 替換 `public/index.html` 的 `<style>` 區塊**
@@ -119,8 +119,8 @@ meeting-recorder/
       border: 0; border-radius: 12px; background: none; cursor: pointer;
       transition: background-color .2s;
     }
+    /* 錄音中的方塊同樣要有 hover 灰底——它是「停止並分析」的觸發點，沒有回饋會看不出可點 */
     .orb:hover { background: var(--fg-10); }
-    .orb--rec:hover { background: none; }
     .mic { width: 24px; height: 24px; color: var(--fg-70); }
     .cube {
       width: 24px; height: 24px; border-radius: 4px;
@@ -335,7 +335,7 @@ git commit -m "feat: 錄音頁視覺基礎（CSS 變數、深淺色、共用骨�
 - Modify: `public/app.js`（`drawWave`、`togglePause`、`startRecording`）
 
 **Interfaces:**
-- Consumes: Task 1 的 CSS 類別 `.panel`、`.rec-title`、`.orb--rec`、`.cube`、`.timer`、`.wave`、`.bar`、`.linkbtn`、`.linkbtn--danger`、`.paused`；`app.js` 的 `BARS` 常數與 `.wave` 填充迴圈。
+- Consumes: Task 1 的 CSS 類別 `.panel`、`.rec-title`、`.orb`、`.cube`、`.timer`、`.wave`、`.bar`、`.linkbtn`、`.linkbtn--danger`、`.paused`；`app.js` 的 `BARS` 常數與 `.wave` 填充迴圈。
 - Produces: `#wave` 內的 48 個 `.bar`（由 `drawWave()` 以 `transform: scaleY()` 驅動）；`#view-recording` 上的 `paused` class 作為暫停態的唯一標記；新元素 `#rec-title`。
 
 - [ ] **Step 1: 替換 `view-recording` 的標記**
@@ -345,7 +345,7 @@ git commit -m "feat: 錄音頁視覺基礎（CSS 變數、深淺色、共用骨�
 ```html
     <section id="view-recording" class="panel hidden">
       <div id="rec-title" class="rec-title is-empty"></div>
-      <button id="btn-stop" class="orb orb--rec" title="停止並分析" aria-label="停止並分析">
+      <button id="btn-stop" class="orb" title="停止並分析" aria-label="停止並分析">
         <span class="cube" aria-hidden="true"></span>
       </button>
       <div class="timer" id="timer">00:00</div>
@@ -672,6 +672,6 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 **3. 型別與命名一致性**
 - `BARS`（Task 1 Step 3 定義）僅用於填充迴圈；`drawWave()`（Task 2）改用 `bars.length`，不依賴該常數，無不一致。
 - `setStep(id, state)` 的 `state` 在 Task 3 Step 3 定義為 `''` / `'active'` / `'done'`，Task 3 Step 4 的呼叫與既有 `sendForProcessing()` 內的呼叫全部符合。
-- CSS 類別名稱在 Task 1 定義、Task 2–3 使用，逐一比對一致（`.orb--rec`、`.linkbtn--danger`、`.cta.is-file`、`.summary-box`、`.paused`）。
+- CSS 類別名稱在 Task 1 定義、Task 2–3 使用，逐一比對一致（`.linkbtn--danger`、`.cta.is-file`、`.summary-box`、`.paused`）。
 - `#summary-box` 在 Task 3 Step 2 加上 id，Step 5 的 `$('summary-box').open` 對應存在。
 - `#wave` 在 Task 1 仍是舊 canvas、Task 2 才變成 `.wave` 容器；Task 1 的填充迴圈以 `.wave` 選取，不會誤觸 canvas，順序安全。
