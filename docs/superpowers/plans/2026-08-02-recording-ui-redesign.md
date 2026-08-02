@@ -20,6 +20,7 @@
 - **深淺色**：以 `prefers-color-scheme` 切換，兩種模式都要能看。
 - **漸層色值**：`--grad-from: #F9C05C`、`--grad-to: #F52D8E`（已自 `assets/icon.png` 取樣）。所有漸層一律引用這兩個變數，不得寫死 hex。
 - **visualizer 尺寸**：相對參考元件等比放大 1.5 倍——bar 寬 3px、間距 3px、容器 288×24px（整排實寬 285px，仍在 `.stage` 的 320px 內，不需調整其他版面設定）。
+- **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 480px` 且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 32px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 以 `max-height: 200px` 約束，不得撐破 `.stage`。
 - **必須保留的既有行為**：麥克風權限失敗訊息、失敗後保留 `lastBlob` 供重試、`pagehide` 送 `/shutdown`、Notion / `.md` 兩種輸出分支、`esc()` 的 XSS 跳脫、Restart 的確認對話框。
 
 ## 檔案結構
@@ -86,20 +87,30 @@ meeting-recorder/
       font-family: -apple-system, "PingFang TC", sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    .stage { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; }
+    /* min-height 固定，內容自頂端起排：狀態切換時外框高度不變，垂直置中的結果因此恆定 */
+    .stage {
+      width: 100%; max-width: 320px; min-height: 480px;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    }
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .hidden { display: none !important; }
 
-    /* 標題 */
+    /* 標題：兩種狀態的槽位高度必須一致，否則切換時上方元素會位移 */
+    .title-input, .rec-title { height: 32px; margin-bottom: 32px; }
     .title-input {
-      width: 100%; margin-bottom: 32px; padding: 6px 0;
+      width: 100%; padding: 6px 0;
       border: 0; border-bottom: 1px solid transparent; outline: none;
       background: none; color: var(--fg);
       font: inherit; font-size: 15px; text-align: center;
     }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
-    .rec-title { margin-bottom: 32px; font-size: 15px; text-align: center; }
+    .rec-title {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; text-align: center;
+    }
+    /* 標題為空時保留空間，不可用 display:none（會抽掉槽位造成上移） */
+    .rec-title.is-empty { visibility: hidden; }
 
     /* 中央大按鈕 */
     .orb {
@@ -205,7 +216,7 @@ meeting-recorder/
       margin-top: 12px; padding: 12px 14px; border-radius: 10px;
       background: var(--fg-10);
       font-size: 13px; line-height: 1.6;
-      max-height: 40vh; overflow-y: auto;
+      max-height: 200px; overflow-y: auto;   /* 不得撐破 .stage 的固定高度 */
     }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
 
@@ -333,7 +344,7 @@ git commit -m "feat: 錄音頁視覺基礎（CSS 變數、深淺色、共用骨�
 
 ```html
     <section id="view-recording" class="panel hidden">
-      <div id="rec-title" class="rec-title hidden"></div>
+      <div id="rec-title" class="rec-title is-empty"></div>
       <button id="btn-stop" class="orb orb--rec" title="停止並分析" aria-label="停止並分析">
         <span class="cube" aria-hidden="true"></span>
       </button>
@@ -398,7 +409,7 @@ function togglePause() {
 ```js
   const t = $('title').value.trim();
   $('rec-title').textContent = t;
-  $('rec-title').classList.toggle('hidden', !t);
+  $('rec-title').classList.toggle('is-empty', !t);   // visibility:hidden 保留槽位，避免版面上移
   $('btn-pause').textContent = 'Pause';
   $('view-recording').classList.remove('paused');
 ```
