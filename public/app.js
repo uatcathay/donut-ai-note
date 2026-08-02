@@ -33,6 +33,7 @@ function stopTimer() { clearInterval(timerId); timerId = null; }
 // 改用對數頻段：低頻分到較多長條、高頻壓縮，48 根都落在有內容的範圍內。
 const WAVE_MIN_HZ = 60;
 const WAVE_MAX_HZ = 6000;
+const WAVE_GAMMA = 1.8;   // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
 
 function bandEdges(binCount, nyquist, bands) {
   return Array.from({ length: bands + 1 }, (_, i) => {
@@ -54,7 +55,8 @@ function drawWave() {
       let sum = 0;
       for (let j = from; j < to; j++) sum += data[j];
       const avg = sum / (to - from);            // 0–255
-      bars[i].style.transform = `scaleY(${0.2 + (avg / 255) * 0.8})`;  // 20%–100%
+      const level = (avg / 255) ** WAVE_GAMMA;  // 指數曲線：把弱訊號壓更低，拉開強弱差距
+      bars[i].style.transform = `scaleY(${0.12 + level * 0.88})`;  // 12%–100%
     }
   };
   render();
@@ -81,6 +83,11 @@ async function startRecording() {
   mediaRecorder.start();
   audioCtx = new AudioContext();
   analyser = audioCtx.createAnalyser();
+  // 預設值會讓整排長條看起來一樣高：0.8 的時間平滑把每幀抹平，
+  // 而 -100 ~ -30dB 的預設視窗讓一般說話全擠在中段。收窄視窗並降低平滑以拉開起伏。
+  analyser.smoothingTimeConstant = 0.6;
+  analyser.minDecibels = -85;
+  analyser.maxDecibels = -25;
   audioCtx.createMediaStreamSource(stream).connect(analyser);
   drawWave();
   startTimer();
