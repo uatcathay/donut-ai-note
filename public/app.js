@@ -58,7 +58,7 @@ async function startRecording() {
   $('timer').textContent = '00:00';
   const t = $('title').value.trim();
   $('rec-title').textContent = t;
-  $('rec-title').classList.toggle('hidden', !t);
+  $('rec-title').classList.toggle('is-empty', !t);   // visibility:hidden 保留槽位，避免版面上移
   $('btn-pause').textContent = 'Pause';
   $('view-recording').classList.remove('paused');
   mediaRecorder = new MediaRecorder(stream);
