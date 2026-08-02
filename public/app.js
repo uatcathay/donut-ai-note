@@ -35,9 +35,9 @@ const WAVE_MIN_HZ = 60;
 const WAVE_MAX_HZ = 6000;
 const WAVE_GAMMA = 1.4;        // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
 const WAVE_PEAK_DECAY = 0.93;  // 峰值追隨器每幀的衰減率，越小則基準回落越快
-const WAVE_NOISE_RISE = 1.002; // 噪音底線每幀最多上升的比例（緩慢適應變吵的環境）
-const WAVE_NOISE_MARGIN = 1.8; // 要高於噪音底線這個倍數才算「有人在講話」，調大則更不敏感
-const WAVE_NOISE_FLOOR_MIN = 4;// 門檻的絕對下限，避免全然無聲的環境把門檻壓到 0
+const WAVE_SPEECH_SPAN = 8;    // 超出死區多少（0–255）即視為滿強度；調大則更不敏感
+const WAVE_NOISE_DEV_K = 4;    // 死區＝底噪平均 + 波動幅度 × 此倍數；調大則更不容易被底噪觸發
+const WAVE_NOISE_ADAPT = 0.02; // 底噪統計的適應速率
 
 function bandEdges(binCount, nyquist, bands) {
   return Array.from({ length: bands + 1 }, (_, i) => {
@@ -52,33 +52,44 @@ function drawWave() {
   const edges = bandEdges(data.length, audioCtx.sampleRate / 2, bars.length);
   const levels = new Float32Array(bars.length);
   let peak = 0;
-  let noiseFloor = 255;   // 由第一幀起自動校準到實際的環境底噪
+  let noiseMean = null;   // 底噪的平均值，由第一幀起自動校準
+  let noiseDev = 3;       // 底噪自身的波動幅度
   const render = () => {
     rafId = requestAnimationFrame(render);
     analyser.getByteFrequencyData(data);
     let frameMax = 0;
+    let frameSum = 0;
     for (let i = 0; i < bars.length; i++) {
       const from = edges[i];
       const to = Math.max(from + 1, edges[i + 1]);   // 低頻的相鄰邊界可能重疊，至少取一格
       let sum = 0;
       for (let j = from; j < to; j++) sum += data[j];
       levels[i] = sum / (to - from);            // 0–255
+      frameSum += levels[i];
       if (levels[i] > frameMax) frameMax = levels[i];
     }
-    // 噪音底線自動校準：瞬間跟上更安靜的環境，只緩慢適應變吵的環境，
-    // 因此它追的是「最安靜時的音量」＝這個房間的底噪，不會被說話聲拉高。
-    noiseFloor = frameMax < noiseFloor
-      ? frameMax
-      : Math.min(frameMax, noiseFloor * WAVE_NOISE_RISE + 0.05);
-    const gate = Math.max(WAVE_NOISE_FLOOR_MIN, noiseFloor * WAVE_NOISE_MARGIN);
+    const frameMean = frameSum / bars.length;
+
+    // 靜音判定：拿整排的「平均值」跟底噪比，而不是最大值——單一頻格的雜訊尖峰
+    // 會讓最大值劇烈跳動，平均則穩定得多。
+    // 死區取「底噪平均 + 波動幅度 × 4」：底噪本身持續在平均值上下起伏，
+    // 只扣掉平均並不夠，必須連它的波動一起讓過，安靜時整排才會真正靜止。
+    if (noiseMean === null) noiseMean = frameMean;
+    const deadzone = noiseMean + noiseDev * WAVE_NOISE_DEV_K;
+    const strength = Math.min(1, Math.max(0, (frameMean - deadzone) / WAVE_SPEECH_SPAN));
+    // 只在判定為安靜時更新底噪統計，否則說話聲會把底噪一起拉高
+    if (strength < 0.5) {
+      const d = frameMean - noiseMean;
+      noiseMean += d * WAVE_NOISE_ADAPT;
+      noiseDev += (Math.abs(d) - noiseDev) * WAVE_NOISE_ADAPT;
+    }
 
     // 逐幀正規化：以當下的峰值為基準，講話大聲小聲都能撐滿整排。
     // 用會衰減的峰值追隨器而非直接取當幀最大值——後者會讓整排每幀劇烈重新縮放。
     peak = Math.max(frameMax, peak * WAVE_PEAK_DECAY);
-    const range = peak - gate;
-    const silent = range <= 0;                    // 只有底噪時整排歸位，不放大環境噪音
     for (let i = 0; i < bars.length; i++) {
-      const level = silent ? 0 : (Math.max(0, levels[i] - gate) / range) ** WAVE_GAMMA;
+      const norm = peak > 0 ? levels[i] / peak : 0;
+      const level = strength * norm ** WAVE_GAMMA;
       bars[i].style.transform = `scaleY(${0.12 + level * 0.88})`;  // 12%–100%
     }
   };
