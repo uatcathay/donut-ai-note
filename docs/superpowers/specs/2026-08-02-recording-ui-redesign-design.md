@@ -61,7 +61,7 @@
 
 ### 元素 id 沿用
 
-`title`、`btn-start`、`btn-pause`、`btn-stop`、`btn-restart`、`btn-new`、`btn-retry`、`timer`、`result-link`、`preview`、`err`、四個 `view-*` 容器 — **全數沿用**（`s-upload` / `s-analyze` / `s-write` 隨三步驟清單一併移除，改為單一 `#proc-stage`），把 app.js 改動壓到最小。
+`title`、`btn-start`、`btn-pause`、`btn-stop`、`btn-restart`、`btn-new`、`btn-retry`、`timer`、`result-link`、`preview`、`err`、四個 `view-*` 容器 — **全數沿用**（`s-upload` / `s-analyze` / `s-write` 隨三步驟清單一併移除，改為單一 `.proc-stage` 元素），把 app.js 改動壓到最小。
 
 **結構性變動（三處，實作時必須同步改 app.js）**：
 
@@ -111,7 +111,7 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
         會議標題（選填）        ← 無框置中輸入，focus 時底線亮起
              🎙               ← 64×64 圓角方塊，hover 淡底
             00:00             ← 等寬字，30% 不透明
-      ▁▁▁▁▁▁▁▁▁▁▁▁▁▁        ← 48 根靜止細條，高 4px，10% 不透明
+      ▁▁▁▁▁▁▁▁▁▁▁▁▁▁        ← 48 根靜止細條，高 6px，10% 不透明
         Click to speak        ← 12px，70% 不透明
 ```
 

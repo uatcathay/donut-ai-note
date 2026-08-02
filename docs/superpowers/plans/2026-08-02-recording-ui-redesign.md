@@ -444,11 +444,11 @@ git commit -m "feat: 錄音／暫停頁重做，48 根長條改由真實音量�
 
 **Files:**
 - Modify: `public/index.html`（`view-processing`、`view-done` 區塊）
-- Modify: `public/app.js`（移除 `setStep`、改寫 `sendForProcessing` 為 XHR、`renderDone`）
+- Modify: `public/app.js`（移除 `setStep`、`renderDone` 配合新標記調整；`sendForProcessing` 維持使用 `fetch`，不改）
 
 **Interfaces:**
 - Consumes: Task 1 的 CSS 類別 `.ring`、`.proc-stage`、`.done-title`、`.linkbtn`、`.linkbtn.is-file`、`#preview`。
-- Produces: 新元素 `#done-title`、`#proc-stage`；`#preview` 作為永遠展開、固定高 400px 的摘要區；`setStage(text)` 取代舊的 `setStep(id, state)`——單行文字隨階段替換。
+- Produces: 新元素 `#done-title`、`#proc-stage`；`#preview` 作為永遠展開、固定高 400px 的摘要區；移除 `setStep(id, state)`——處理中頁文字改為 HTML 中的固定字串，不需要對應的 JS 函式。
 
 - [ ] **Step 1: 替換 `view-processing` 的標記**
 
@@ -472,55 +472,33 @@ git commit -m "feat: 錄音／暫停頁重做，48 根長條改由真實音量�
     </section>
 ```
 
-- [ ] **Step 3: 以 `setStage` 取代 `setStep`**
+- [ ] **Step 3: 刪除 `setStep`，處理中頁不需要任何 JS 函式**
 
-把 `setStep()` 整個函式刪除，換成：
+把 `setStep()` 整個函式刪除。處理中頁的文字已在 Step 1 的標記中直接寫死為 `Analyzing with Gemini…`，不做階段性變化，因此不需要任何對應的 JS 函式來設定或切換它。
 
-```js
-function setStage(text) {
-  $('proc-stage').textContent = text;
-}
-```
+- [ ] **Step 4: `sendForProcessing()` 維持使用 `fetch`（不改動邏輯，僅確認與新標記相容）**
 
-- [ ] **Step 4: 改寫 `sendForProcessing()` 為 XHR，兩個階段皆由真實訊號驅動**
-
-把 `sendForProcessing()` 整個函式替換成：
+`sendForProcessing()` 維持原樣，不需要改寫成 XHR——處理中頁已定為單行固定文字、不做階段性變化，取不到「上傳完成」訊號的顧慮因此不成立。函式內容如下（與現行 `public/app.js` 逐字相同，僅供比對，不需要改動）：
 
 ```js
-// 用 XMLHttpRequest 而非 fetch：fetch 沒有上傳進度事件，取不到「音檔傳完」這個真實訊號。
-function sendForProcessing() {
+async function sendForProcessing() {
   show('processing');
-  setStage('Uploading audio…');
   const fd = new FormData();
   fd.set('title', $('title').value || '');
   fd.set('audio', lastBlob, 'recording.webm');
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/process');
-    // 音檔實際傳完 → 進入分析階段（伺服器內部的分析與寫入無法再細分）
-    xhr.upload.addEventListener('load', () => setStage('Analyzing with Gemini…'));
-    xhr.addEventListener('load', () => {
-      try {
-        const body = JSON.parse(xhr.responseText);
-        if (!body.ok) throw new Error(body.message || '處理失敗');
-        renderDone(body);
-      } catch (e) {
-        showError(`處理失敗：${e.message}`, true);
-      }
-      resolve();
-    });
-    xhr.addEventListener('error', () => {
-      showError('處理失敗：無法連上伺服器', true);
-      resolve();
-    });
-    xhr.send(fd);
-  });
+  try {
+    const res = await fetch('/api/process', { method: 'POST', body: fd });
+    const body = await res.json();
+    if (!body.ok) throw new Error(body.message || '處理失敗');
+    renderDone(body);
+  } catch (e) {
+    showError(`處理失敗：${e.message}`, true);
+  }
 }
 ```
 
-> 回傳 Promise 讓 `mediaRecorder.onstop` 內既有的 `await sendForProcessing()` 維持有效。
+> `async function` 本身即回傳 Promise，`mediaRecorder.onstop` 內既有的 `await sendForProcessing()` 維持有效。
 > 失敗時仍走 `showError(msg, true)`，保留 `lastBlob` 供「用同一段錄音重試」。
-> 不再需要重置步驟狀態——單行文字每次都會被重新寫入。
 
 - [ ] **Step 5: 改寫 `app.js` 的 `renderDone`**
 
@@ -545,7 +523,7 @@ function renderDone(body) {
 }
 ```
 
-> `body.title` 由後端 `processMeeting()` 回傳（使用者填的標題，或 Gemini 建議的標題，或日期）——比讀取輸入框可靠。`.md` 分支移除 `href`，讓它不可點擊。`open = false` 確保每次完成都是摺疊狀態。
+> `body.title` 由後端 `processMeeting()` 回傳（使用者填的標題，或 Gemini 建議的標題，或日期）——比讀取輸入框可靠。`.md` 分支移除 `href`，讓它不可點擊。
 
 - [ ] **Step 6: 語法檢查與後端回歸**
 
@@ -578,7 +556,7 @@ Expected: 紅色淡底圓角卡片顯示「處理失敗：…」，下方出現�
 
 ```bash
 git add public/index.html public/app.js
-git commit -m "feat: 處理中頁、完成頁（摘要摺疊）與錯誤區塊視覺重做"
+git commit -m "feat: 處理中頁、完成頁（摘要常駐展開）與錯誤區塊視覺重做"
 ```
 
 ---
@@ -646,8 +624,8 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 | 待機頁（無框標題輸入、mic、00:00、靜態長條、Click to speak） | Task 1 Step 2 |
 | 錄音頁（旋轉方塊＝停止、Pause、Restart） | Task 2 Step 1 |
 | 暫停態（停轉、凍結、Resume 就地取代） | Task 2 Step 2；Task 2 Step 6 驗證 |
-| 處理中（脈動環＋三步驟） | Task 3 Step 1、Step 3 |
-| 完成頁（勾勾、標題、主按鈕、摘要摺疊、可捲動） | Task 3 Step 2、Step 5 |
+| 處理中（脈動環＋單行固定文字） | Task 3 Step 1、Step 3 |
+| 完成頁（標題、主按鈕、摘要常駐固定 400px、可捲動） | Task 3 Step 2、Step 5 |
 | 真實音量驅動 48 長條，20%–100% | Task 2 Step 2 |
 | 移除 `rec-label` 並同步刪 JS 寫入 | Task 2 Step 1、Step 2；Step 4 以 grep 驗證 |
 | 新增 `rec-title`、`done-title` | Task 2 Step 3、Task 3 Step 5 |
@@ -664,6 +642,6 @@ Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`
 
 **3. 型別與命名一致性**
 - `BARS`（Task 1 Step 3 定義）僅用於填充迴圈；`drawWave()`（Task 2）改用 `bars.length`，不依賴該常數，無不一致。
-- `setStage(text)` 在 Task 3 Step 3 定義，Step 4 的兩處呼叫（`Uploading audio…` / `Analyzing with Gemini…`）與之一致；舊的 `setStep` 已完全移除。
+- 舊的 `setStep` 已於 Task 3 Step 3 完全移除；處理中頁文字改為 HTML 中的固定字串 `Analyzing with Gemini…`，不需要對應的 JS 函式。`sendForProcessing()`（Task 3 Step 4）維持使用 `fetch`，與 Global Constraints 一致。
 - CSS 類別名稱在 Task 1 定義、Task 2–3 使用，逐一比對一致（`.linkbtn--danger`、`.linkbtn.is-file`、`.paused`）。
 - `#wave` 在 Task 1 仍是舊 canvas、Task 2 才變成 `.wave` 容器；Task 1 的填充迴圈以 `.wave` 選取，不會誤觸 canvas，順序安全。
