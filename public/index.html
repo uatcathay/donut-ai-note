@@ -40,7 +40,7 @@
     }
     /* min-height 固定，內容自頂端起排：狀態切換時外框高度不變，垂直置中的結果因此恆定 */
     .stage {
-      width: 100%; max-width: 320px; min-height: 480px;
+      width: 100%; max-width: 320px; min-height: 560px;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -112,10 +112,14 @@
       padding: 4px 10px; border: 0; border-radius: 6px;
       background: none; color: var(--fg-70); cursor: pointer;
       font: inherit; font-size: 12px;
+      display: inline-block; text-decoration: none;   /* 同一套樣式也用在 <a> 上 */
     }
     .linkbtn:hover { background: var(--fg-10); }
     .linkbtn--danger { color: var(--danger); }
     .linkbtn + .linkbtn { margin-top: 20px; }
+    /* .md 輸出時連結不可點，只作為路徑顯示 */
+    .linkbtn.is-file { cursor: default; word-break: break-all; }
+    .linkbtn.is-file:hover { background: none; }
 
     /* 處理中 */
     .ring {
@@ -138,36 +142,16 @@
     .step.done::before { content: "✓ "; }
 
     /* 完成 */
-    .check {
-      width: 64px; height: 64px; margin-bottom: 8px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-      color: #fff; font-size: 30px;
-    }
-    .done-title { margin-bottom: 20px; font-size: 15px; text-align: center; }
-    .cta {
-      margin-bottom: 20px; padding: 10px 20px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-      color: #fff; font-size: 14px; font-weight: 600;
-      text-decoration: none; text-align: center;
-    }
-    .cta.is-file {
-      background: none; color: var(--fg-70);
-      font-size: 12px; font-weight: 400; word-break: break-all;
-    }
-    .summary-box { width: 100%; margin-bottom: 20px; }
-    .summary-box > summary {
-      list-style: none; cursor: pointer; text-align: center;
-      font-size: 12px; color: var(--fg-70);
-    }
-    .summary-box > summary::-webkit-details-marker { display: none; }
-    .summary-box > summary::after { content: " ⌄"; }
-    .summary-box[open] > summary::after { content: " ⌃"; }
+    .done-title { margin-bottom: 20px; font-size: 18px; text-align: center; }
+    /* 摘要：永遠展開、固定高、距視窗左右各 40px（刻意寬於 .stage，靠置中突破）。
+       calc(100vw - 80px) 恆窄於 body 的內容框，不會產生橫向捲軸。 */
     #preview {
-      margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+      width: calc(100vw - 80px);
+      height: 400px; overflow-y: auto;
+      margin-bottom: 20px; padding: 12px 14px; border-radius: 10px;
       background: var(--fg-10);
       font-size: 13px; line-height: 1.6;
-      max-height: 200px; overflow-y: auto;   /* 不得撐破 .stage 的固定高度 */
+      text-align: left;
     }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
 
@@ -218,14 +202,10 @@
     </section>
 
     <section id="view-done" class="panel hidden">
-      <div class="check" aria-hidden="true">✓</div>
       <div id="done-title" class="done-title"></div>
-      <a class="cta" id="result-link" href="#" target="_blank" rel="noopener"></a>
-      <details class="summary-box" id="summary-box">
-        <summary>查看摘要</summary>
-        <div id="preview"></div>
-      </details>
-      <button id="btn-new" class="linkbtn">＋ 記錄新會議</button>
+      <div id="preview"></div>
+      <a class="linkbtn" id="result-link" href="#" target="_blank" rel="noopener"></a>
+      <button id="btn-new" class="linkbtn">New AI Note</button>
     </section>
 
     <div id="err" class="hidden"></div>

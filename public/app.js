@@ -161,7 +161,6 @@ function renderDone(body) {
   }
   const points = body.keyPoints.map((p) => `<li>${esc(p)}</li>`).join('');
   $('preview').innerHTML = `<b>【摘要】</b><br>${esc(body.summary)}<br><br><b>【重點】</b><ul>${points}</ul><small>（完整逐字稿已另存）</small>`;
-  $('summary-box').open = false;
   show('done');
 }
 
