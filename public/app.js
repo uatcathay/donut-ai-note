@@ -48,17 +48,6 @@ function bandEdges(binCount, nyquist, bands) {
   });
 }
 
-// 以 ?debug=1 開啟：在左上角即時顯示波形判定用的數值，用來調校靜音死區。
-const WAVE_DEBUG = new URLSearchParams(location.search).has('debug');
-let dbgEl = null;
-if (WAVE_DEBUG) {
-  dbgEl = document.createElement('pre');
-  dbgEl.style.cssText = 'position:fixed;left:8px;top:8px;margin:0;padding:6px 8px;'
-    + 'background:rgba(0,0,0,.8);color:#4ade80;font:11px ui-monospace,Menlo,monospace;'
-    + 'line-height:1.5;z-index:9999;white-space:pre;border-radius:6px;';
-  document.body.appendChild(dbgEl);
-}
-
 function drawWave() {
   const bars = document.querySelectorAll('#wave .bar');
   const data = new Uint8Array(analyser.frequencyBinCount);
@@ -68,7 +57,6 @@ function drawWave() {
   let prevBlockMin = Infinity;   // 上一個區塊的最低平均音量
   let blockMin = Infinity;       // 目前區塊的最低平均音量
   let blockFrames = 0;
-  let frame = 0;
   const render = () => {
     rafId = requestAnimationFrame(render);
     analyser.getByteFrequencyData(data);
@@ -106,14 +94,6 @@ function drawWave() {
     // 逐幀正規化：以當下的峰值為基準，講話大聲小聲都能撐滿整排。
     // 用會衰減的峰值追隨器而非直接取當幀最大值——後者會讓整排每幀劇烈重新縮放。
     peak = Math.max(frameMax, peak * WAVE_PEAK_DECAY);
-
-    if (dbgEl && frame % 6 === 0) {
-      dbgEl.textContent =
-        `frameMean  ${frameMean.toFixed(1).padStart(6)}   frameMax ${frameMax.toFixed(1).padStart(6)}\n` +
-        `noiseFloor ${noiseFloor.toFixed(1).padStart(6)}   deadzone ${deadzone.toFixed(1).padStart(6)}\n` +
-        `peak       ${peak.toFixed(1).padStart(6)}   strength ${strength.toFixed(2).padStart(6)}`;
-    }
-    frame += 1;
 
     for (let i = 0; i < bars.length; i++) {
       const norm = peak > 0 ? levels[i] / peak : 0;
