@@ -29,17 +29,18 @@ function startTimer() {
 function stopTimer() { clearInterval(timerId); timerId = null; }
 
 function drawWave() {
-  const canvas = $('wave');
-  const ctx = canvas.getContext('2d');
+  const bars = document.querySelectorAll('#wave .bar');
   const data = new Uint8Array(analyser.frequencyBinCount);
+  const seg = Math.floor(data.length / bars.length);
   const render = () => {
     rafId = requestAnimationFrame(render);
     analyser.getByteFrequencyData(data);
-    const avg = data.reduce((a, b) => a + b, 0) / data.length;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#2d6cdf';
-    const h = Math.min(canvas.height, (avg / 255) * canvas.height * 2);
-    ctx.fillRect(0, canvas.height - h, canvas.width, h);
+    for (let i = 0; i < bars.length; i++) {
+      let sum = 0;
+      for (let j = i * seg; j < (i + 1) * seg; j++) sum += data[j];
+      const avg = sum / seg;                    // 0–255
+      bars[i].style.transform = `scaleY(${0.2 + (avg / 255) * 0.8})`;  // 20%–100%
+    }
   };
   render();
 }
@@ -55,6 +56,11 @@ async function startRecording() {
   chunks = [];
   seconds = 0;
   $('timer').textContent = '00:00';
+  const t = $('title').value.trim();
+  $('rec-title').textContent = t;
+  $('rec-title').classList.toggle('hidden', !t);
+  $('btn-pause').textContent = 'Pause';
+  $('view-recording').classList.remove('paused');
   mediaRecorder = new MediaRecorder(stream);
   mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
   mediaRecorder.start();
@@ -68,18 +74,19 @@ async function startRecording() {
 
 function togglePause() {
   if (!mediaRecorder) return;
+  const panel = $('view-recording');
   if (mediaRecorder.state === 'recording') {
     mediaRecorder.pause();
     stopTimer();
     stopWave();
-    $('btn-pause').textContent = '▶ 繼續';
-    $('rec-label').textContent = '已暫停';
+    $('btn-pause').textContent = 'Resume';
+    panel.classList.add('paused');
   } else if (mediaRecorder.state === 'paused') {
     mediaRecorder.resume();
     startTimer();
     drawWave();
-    $('btn-pause').textContent = '⏸ 暫停';
-    $('rec-label').textContent = '錄音中';
+    $('btn-pause').textContent = 'Pause';
+    panel.classList.remove('paused');
   }
 }
 

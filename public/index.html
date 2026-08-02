@@ -187,12 +187,15 @@
       <div class="hint">Click to speak</div>
     </section>
 
-    <section id="view-recording" class="hidden">
-      <div>🔴 <span id="rec-label">錄音中</span>　<span class="timer" id="timer">00:00</span></div>
-      <canvas id="wave" width="600" height="48"></canvas>
-      <button id="btn-pause">⏸ 暫停</button>
-      <button id="btn-stop" class="primary">■ 停止並分析</button>
-      <button id="btn-restart" class="danger">↺ 重新開始</button>
+    <section id="view-recording" class="panel hidden">
+      <div id="rec-title" class="rec-title hidden"></div>
+      <button id="btn-stop" class="orb orb--rec" title="停止並分析" aria-label="停止並分析">
+        <span class="cube" aria-hidden="true"></span>
+      </button>
+      <div class="timer" id="timer">00:00</div>
+      <div class="wave" id="wave" aria-hidden="true"></div>
+      <button id="btn-pause" class="linkbtn">Pause</button>
+      <button id="btn-restart" class="linkbtn linkbtn--danger">Restart</button>
     </section>
 
     <section id="view-processing" class="hidden">
