@@ -70,8 +70,8 @@
       border: 0; border-radius: 12px; background: none; cursor: pointer;
       transition: background-color .2s;
     }
+    /* 錄音中的方塊同樣要有 hover 灰底——它是「停止並分析」的觸發點，沒有回饋會看不出可點 */
     .orb:hover { background: var(--fg-10); }
-    .orb--rec:hover { background: none; }
     .mic { width: 24px; height: 24px; color: var(--fg-70); }
     .cube {
       width: 24px; height: 24px; border-radius: 4px;
@@ -199,7 +199,7 @@
 
     <section id="view-recording" class="panel hidden">
       <div id="rec-title" class="rec-title is-empty"></div>
-      <button id="btn-stop" class="orb orb--rec" title="停止並分析" aria-label="停止並分析">
+      <button id="btn-stop" class="orb" title="停止並分析" aria-label="停止並分析">
         <span class="cube" aria-hidden="true"></span>
       </button>
       <div class="timer" id="timer">00:00</div>
