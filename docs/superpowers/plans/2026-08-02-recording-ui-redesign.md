@@ -559,7 +559,7 @@ Expected: `node --check` 無輸出；`tests 40 / pass 40 / fail 0`。
 Run: `npm start`，錄一段 10 秒左右的話並停止。
 
 Expected：
-- 處理中：中央是脈動的漸層圓環；三個步驟依序由灰 `○` → `⟳` 亮起 → 綠 `✓`。
+- 處理中：脈動漸層圓環距內容區頂端 80px、下方 20px 處為置中單行文字；文字先顯示 `Uploading audio…`，音檔傳完後換成 `Analyzing with Gemini…`。
 - 完成：會議標題（18px）→ 灰底摘要區（固定 400px 高、距視窗左右各 40px、內容超出時自身捲動）→ 文字樣式的「開啟 Notion 記錄」（未設定 Notion 時改顯示 `.md` 檔路徑且不可點）→「New AI Note」。
 - 完成頁不應出現勾勾圖示、也沒有「查看摘要」摺疊。
 - 按「New AI Note」回待機頁，標題輸入已清空。
