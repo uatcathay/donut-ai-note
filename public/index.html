@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>會議記錄工具</title>
+  <title>Browser AI Note</title>
   <style>
     :root {
       --grad-from: #F9C05C;
@@ -54,8 +54,10 @@
     }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
-    /* 用 flex 置中讓文字在 36px 槽位內垂直居中（與 .title-input 的視覺基線一致） */
+    /* 盒模型必須與 .title-input 完全一致（同樣的 padding 與 1px 透明底線），
+       否則兩者的文字中心會差 0.5px，切換狀態時看得出標題微幅位移。 */
     .rec-title, .done-title {
+      padding: 6px 0; border-bottom: 1px solid transparent;
       display: flex; align-items: center; justify-content: center;
       font-size: 18px; text-align: center;
     }
@@ -172,7 +174,7 @@
 <body>
   <main class="stage">
     <section id="view-idle" class="panel">
-      <input id="title" type="text" class="title-input" placeholder="會議標題（選填，空白就用日期）" />
+      <input id="title" type="text" class="title-input" placeholder="會議標題（選填，空白就讓 AI 命名）" />
       <button id="btn-start" class="orb" title="開始錄音" aria-label="開始錄音">
         <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
