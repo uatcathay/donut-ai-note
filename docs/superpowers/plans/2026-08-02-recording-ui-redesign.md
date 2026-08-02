@@ -219,7 +219,7 @@ meeting-recorder/
 ```html
   <main class="stage">
     <section id="view-idle" class="panel">
-      <input id="title" type="text" class="title-input" placeholder="會議標題（選填，空白就用日期）" />
+      <input id="title" type="text" class="title-input" placeholder="會議標題（選填，空白就讓 AI 命名）" />
       <button id="btn-start" class="orb" title="開始錄音" aria-label="開始錄音">
         <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

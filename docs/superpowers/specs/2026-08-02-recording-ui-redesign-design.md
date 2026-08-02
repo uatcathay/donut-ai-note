@@ -83,6 +83,7 @@
 
 - `.stage` 設固定 `min-height: 560px`（取自最高的完成頁），內容自固定頂端起排（`justify-content: flex-start`），使外框高度不隨內容變動，垂直置中的結果因此恆定。
 - 標題槽在待機與錄音兩種狀態下**高度必須相同**（`.title-input` 與 `.rec-title` 皆為 36px + 32px 下邊距；36px 是為了容納 18px 字級）。
+- 三個標題元素（`.title-input` / `.rec-title` / `.done-title`）的**盒模型必須完全一致**（相同的 `height`、`padding` 與 `border-bottom`），否則 `<input>` 與 `<div>` 的文字中心會有次像素落差，切換時看得出微幅位移。
 - 標題為空時，`.rec-title` 以 `visibility: hidden` 保留空間，**不得用 `display: none`**（後者會抽掉整個槽位造成上移）。
 - 下方控制項的數量在各狀態不同是允許的——因為採頂端對齊，它們的高度差不會推動上方元素。
 - 完成頁的摘要高度固定 `400px` 且自身捲動，不得撐破 `.stage` 的固定高度。
@@ -115,7 +116,7 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
         Click to speak        ← 12px，70% 不透明
 ```
 
-- 標題輸入無邊框，僅置中文字與 placeholder「會議標題（選填，空白就用日期）」。
+- 標題輸入無邊框，僅置中文字與 placeholder「會議標題（選填，空白就讓 AI 命名）」。（留空時後端 `decideTitle()` 會優先採用 Gemini 依內容建議的標題，兩者皆無才用日期；文案依此行為撰寫。）
 - 點中央按鈕 = 開始錄音（沿用 `btn-start`）。
 
 ### 狀態二：錄音中（`view-recording`）
