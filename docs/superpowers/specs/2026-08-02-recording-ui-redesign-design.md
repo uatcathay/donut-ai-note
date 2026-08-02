@@ -203,8 +203,10 @@ visualizer（48 根長條，bar 寬 3px、間距 3px，容器 288×24px；較參
 現行 `drawWave()` 把整個頻譜平均成單一數值、畫成一根 canvas 長條。改為：
 
 1. 每幀 `analyser.getByteFrequencyData(data)`。
-2. 把頻譜切成 48 段，各段取平均。
+2. 依**對數頻段**把頻譜切成 48 段，各段取平均。
 3. 映射到 **20%–100%** 的高度區間，以 `transform: scaleY()` 寫進對應 `<span>`（GPU 合成，48 元素 60fps 不卡）。
+
+**為何是對數而非線性**：`AnalyserNode` 的 1024 個頻率格涵蓋 0 至取樣率的一半（通常 24kHz），但人聲能量幾乎全在 4kHz 以下。線性切分會讓後面四十根長條落在幾乎無訊號的高頻段、看起來像壞掉。改以 `60Hz – 6000Hz` 的對數邊界分配（`WAVE_MIN_HZ` / `WAVE_MAX_HZ`），低頻取得較多長條、高頻壓縮，48 根都落在有內容的範圍內。低頻端相鄰邊界可能落在同一格，以 `Math.max(from + 1, …)` 保證每根至少取一格、不會除以零。
 
 `requestAnimationFrame` 迴圈骨架與 `startRecording()` 內的 `AudioContext` / `AnalyserNode` 建立流程完全照舊。
 

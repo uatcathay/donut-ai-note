@@ -28,17 +28,32 @@ function startTimer() {
 }
 function stopTimer() { clearInterval(timerId); timerId = null; }
 
+// 頻譜的 1024 個格子涵蓋 0 – 取樣率/2（通常是 24kHz），但人聲能量幾乎全在 4kHz 以下。
+// 線性切成 48 段的話，後面四十根長條對應的是幾乎沒有訊號的高頻，看起來像壞掉。
+// 改用對數頻段：低頻分到較多長條、高頻壓縮，48 根都落在有內容的範圍內。
+const WAVE_MIN_HZ = 60;
+const WAVE_MAX_HZ = 6000;
+
+function bandEdges(binCount, nyquist, bands) {
+  return Array.from({ length: bands + 1 }, (_, i) => {
+    const hz = WAVE_MIN_HZ * (WAVE_MAX_HZ / WAVE_MIN_HZ) ** (i / bands);
+    return Math.min(binCount - 1, Math.round((hz / nyquist) * binCount));
+  });
+}
+
 function drawWave() {
   const bars = document.querySelectorAll('#wave .bar');
   const data = new Uint8Array(analyser.frequencyBinCount);
-  const seg = Math.floor(data.length / bars.length);
+  const edges = bandEdges(data.length, audioCtx.sampleRate / 2, bars.length);
   const render = () => {
     rafId = requestAnimationFrame(render);
     analyser.getByteFrequencyData(data);
     for (let i = 0; i < bars.length; i++) {
+      const from = edges[i];
+      const to = Math.max(from + 1, edges[i + 1]);   // 低頻的相鄰邊界可能重疊，至少取一格
       let sum = 0;
-      for (let j = i * seg; j < (i + 1) * seg; j++) sum += data[j];
-      const avg = sum / seg;                    // 0–255
+      for (let j = from; j < to; j++) sum += data[j];
+      const avg = sum / (to - from);            // 0–255
       bars[i].style.transform = `scaleY(${0.2 + (avg / 255) * 0.8})`;  // 20%–100%
     }
   };
