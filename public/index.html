@@ -13,7 +13,6 @@
       --fg-30: rgba(26, 26, 26, .3);
       --fg-10: rgba(26, 26, 26, .1);
       --bg: #ffffff;
-      --ok: #1a8a4a;
       --danger: #c0392b;
       --danger-bg: rgba(192, 57, 43, .1);
     }
@@ -24,7 +23,6 @@
         --fg-30: rgba(242, 242, 242, .3);
         --fg-10: rgba(242, 242, 242, .1);
         --bg: #131313;
-        --ok: #4ade80;
         --danger: #ff6b5e;
         --danger-bg: rgba(255, 107, 94, .12);
       }
@@ -46,8 +44,8 @@
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .hidden { display: none !important; }
 
-    /* 標題：兩種狀態的槽位高度必須一致，否則切換時上方元素會位移 */
-    .title-input, .rec-title { height: 36px; margin-bottom: 32px; }
+    /* 標題：三個頁面的槽位高度必須一致，否則切換時會產生垂直位移 */
+    .title-input, .rec-title, .done-title { height: 36px; margin-bottom: 32px; }
     .title-input {
       width: 100%; padding: 6px 0;
       border: 0; border-bottom: 1px solid transparent; outline: none;
@@ -56,7 +54,8 @@
     }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
-    .rec-title {
+    /* 用 flex 置中讓文字在 36px 槽位內垂直居中（與 .title-input 的視覺基線一致） */
+    .rec-title, .done-title {
       display: flex; align-items: center; justify-content: center;
       font-size: 18px; text-align: center;
     }
@@ -137,7 +136,7 @@
     .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
 
     /* 完成 */
-    .done-title { margin-bottom: 20px; font-size: 18px; text-align: center; }
+    .done-title { margin-bottom: 20px; }   /* 高度與字級由上方共用規則提供 */
     /* 摘要：永遠展開、固定高、距視窗左右各 40px（刻意寬於 .stage，靠置中突破）。
        calc(100vw - 80px) 恆窄於 body 的內容框，不會產生橫向捲軸。 */
     #preview {
@@ -200,7 +199,7 @@
 
     <section id="view-processing" class="panel hidden">
       <div class="ring" aria-hidden="true"></div>
-      <div class="proc-stage">Analyzing with Gemini…</div>
+      <div class="proc-stage" role="status">Analyzing with Gemini…</div>
     </section>
 
     <section id="view-done" class="panel hidden">
