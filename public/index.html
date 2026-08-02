@@ -29,9 +29,11 @@
     }
 
     * { box-sizing: border-box; }
+    /* 內容靠上對齊：視窗拉高時版面不得跟著往下飄。
+       padding-top 取 70px＝(720 − 580) / 2，讓預設的 480×720 視窗維持原本垂直置中的視覺位置。 */
     body {
-      margin: 0; min-height: 100vh; padding: 24px;
-      display: flex; align-items: center; justify-content: center;
+      margin: 0; min-height: 100vh; padding: 70px 24px 24px;
+      display: flex; align-items: flex-start; justify-content: center;
       background: var(--bg); color: var(--fg);
       font-family: -apple-system, "PingFang TC", sans-serif;
       -webkit-font-smoothing: antialiased;
