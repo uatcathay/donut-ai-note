@@ -20,7 +20,7 @@
 - **深淺色**：以 `prefers-color-scheme` 切換，兩種模式都要能看。
 - **漸層色值**：`--grad-from: #F9C05C`、`--grad-to: #F52D8E`（已自 `assets/icon.png` 取樣）。所有漸層一律引用這兩個變數，不得寫死 hex。
 - **visualizer 尺寸**：相對參考元件等比放大 1.5 倍——bar 寬 3px、間距 3px、容器 288×24px（整排實寬 285px，仍在 `.stage` 的 320px 內，不需調整其他版面設定）。
-- **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 560px`（取自最高的完成頁）且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 32px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 固定 `height: 400px` 且自身捲動，不得撐破 `.stage`。
+- **版面位置穩定**：切換狀態時中央大按鈕與其上方元素不得有任何垂直位移。`.stage` 固定 `min-height: 560px`（取自最高的完成頁）且 `justify-content: flex-start`；`.title-input` 與 `.rec-title` 同為 `height: 36px` + `margin-bottom: 32px`；標題為空時 `.rec-title` 用 `visibility: hidden`（`.is-empty` class）保留空間，不得用 `display: none`；`#preview` 固定 `height: 400px` 且自身捲動，不得撐破 `.stage`。
 - **完成頁**：不放勾勾圖示；摘要永遠展開不摺疊、固定高 400px、寬 `calc(100vw - 80px)`（距視窗左右各 40px）；標題字級 18px；「開啟 Notion 記錄」為文字樣式並置於摘要下方；「記錄新會議」文案為 `New AI Note`。
 - **處理中頁**：脈動圓環距內容區頂端 `80px`、與下方文字間距 `20px`、文字水平置中；不再是三行打勾清單，改為**單行固定文字** `Analyzing with Gemini…`，不做階段性變化（`sendForProcessing()` 因此維持使用 `fetch`）。
 - **標題字級**：待機、錄音、完成三頁的標題一律 `18px`；標題槽高度 `36px`（18px 字放不進原本的 32px）。
