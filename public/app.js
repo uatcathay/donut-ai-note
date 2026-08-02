@@ -168,13 +168,28 @@ function clearError() {
   $('btn-retry').classList.add('hidden');
 }
 
+// 標題輸入：隨行數自動長高，上限兩行（再多則於欄位內捲動）。
+// 錄音頁與完成頁對應為 -webkit-line-clamp: 2，兩邊上限一致，長標題才不會推動下方版面。
+const TITLE_MAX_LINES = 2;
+function autoGrowTitle() {
+  const el = $('title');
+  el.style.height = 'auto';
+  const line = parseFloat(getComputedStyle(el).lineHeight);
+  const max = line * TITLE_MAX_LINES + 13;   // padding 12 + 底線 1
+  el.style.height = `${Math.min(el.scrollHeight + 1, max)}px`;
+}
+$('title').addEventListener('input', autoGrowTitle);
+// 會議標題不需要換行，Enter 不插入換行
+$('title').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+autoGrowTitle();
+
 $('btn-start').onclick = () => { clearError(); startRecording(); };
 $('btn-pause').onclick = togglePause;
 $('btn-stop').onclick = stopAndAnalyze;
 $('btn-restart').onclick = restartRecording;
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
-$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };
+$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; autoGrowTitle(); show('idle'); };
 $('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
 // 視窗關閉時通知伺服器結束（配合啟動器達成「關窗即結束」）。

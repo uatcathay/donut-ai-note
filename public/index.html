@@ -38,30 +38,33 @@
     }
     /* min-height 固定，內容自頂端起排：狀態切換時外框高度不變，垂直置中的結果因此恆定 */
     .stage {
-      width: 100%; max-width: 320px; min-height: 560px;
+      width: 100%; max-width: 320px; min-height: 580px;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .hidden { display: none !important; }
 
-    /* 標題：三個頁面的槽位規格必須一致，否則切換時會產生垂直位移。
-       用 min-height 而非 height，長標題換行時區塊自然往下長，不會溢出壓到麥克風；
-       固定的 52px 下邊距同時保證標題與下方元素之間永遠至少有這麼多空間。 */
-    .title-input, .rec-title, .done-title { min-height: 36px; margin-bottom: 52px; }
+    /* 標題：三個頁面的槽位規格必須完全一致，否則切換時會產生垂直位移。
+       最多兩行——待機頁的 textarea 隨行數自動長高（上限兩行、再多則於欄位內捲動），
+       錄音頁與完成頁超過兩行以 … 截斷。因為上限相同，長標題不會再推動下方的麥克風。
+       min-height 取「一行的完整高度」（1.4em 行高 + 12px padding + 1px 底線），
+       讓「空標題」與「一行標題」在三個狀態下高度完全一致。 */
+    .title-input, .rec-title, .done-title {
+      min-height: calc(1.4em + 13px); margin-bottom: 52px;
+      padding: 6px 0; border-bottom: 1px solid transparent;
+      font-size: 18px; line-height: 1.4; text-align: center;
+    }
     .title-input {
-      width: 100%; padding: 6px 0;
+      width: 100%; display: block; resize: none; overflow-y: auto;
       border: 0; border-bottom: 1px solid transparent; outline: none;
-      background: none; color: var(--fg);
-      font: inherit; font-size: 18px; text-align: center;
+      background: none; color: var(--fg); font-family: inherit;
     }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
-    /* 盒模型必須與 .title-input 完全一致（同樣的 padding 與 1px 透明底線），
-       否則兩者的文字中心會差 0.5px，切換狀態時看得出標題微幅位移。 */
+    /* 錄音頁／完成頁：最多兩行，超出以 … 截斷 */
     .rec-title, .done-title {
-      padding: 6px 0; border-bottom: 1px solid transparent;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; line-height: 1.4; text-align: center;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden;
     }
     /* 標題為空時保留空間，不可用 display:none（會抽掉槽位造成上移） */
     .rec-title.is-empty { visibility: hidden; }
@@ -176,7 +179,7 @@
 <body>
   <main class="stage">
     <section id="view-idle" class="panel">
-      <input id="title" type="text" class="title-input" placeholder="會議標題（選填，空白就讓 AI 命名）" />
+      <textarea id="title" class="title-input" rows="1" placeholder="會議標題（選填，空白就讓 AI 命名）"></textarea>
       <button id="btn-start" class="orb" title="開始錄音" aria-label="開始錄音">
         <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
