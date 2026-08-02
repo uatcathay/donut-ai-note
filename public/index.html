@@ -68,7 +68,7 @@
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
       overflow: hidden;
     }
-    /* 標題為空時保留空間，不可用 display:none（會抽掉槽位造成上移） */
+    /* 槽位由 min-height 保證；.is-empty 是日後為此元素加上背景或底線時的保險 */
     .rec-title.is-empty { visibility: hidden; }
 
     /* 中央大按鈕 */
@@ -111,7 +111,6 @@
     }
     #wave .bar {
       background: linear-gradient(180deg, var(--grad-from), var(--grad-to));
-      transform: scaleY(.2);
     }
 
     /* 文字控制項 */
@@ -222,7 +221,7 @@
       <button id="btn-new" class="linkbtn">New AI Note</button>
     </section>
 
-    <div id="err" class="hidden"></div>
+    <div id="err" class="hidden" role="alert"></div>
     <button id="btn-retry" class="linkbtn hidden">↻ 用同一段錄音重試</button>
   </main>
 

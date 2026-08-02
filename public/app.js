@@ -1,11 +1,14 @@
 const $ = (id) => document.getElementById(id);
 const views = ['idle', 'recording', 'processing', 'done'];
+const FOCUS_TARGET = { idle: 'btn-start', recording: 'btn-stop', done: 'btn-new' };
 const BARS = 48;
 for (const el of document.querySelectorAll('.wave')) {
   el.innerHTML = '<span class="bar"></span>'.repeat(BARS);
 }
 function show(view) {
   for (const v of views) $(`view-${v}`).classList.toggle('hidden', v !== view);
+  const focusId = FOCUS_TARGET[view];
+  if (focusId) $(focusId).focus();
 }
 
 let mediaRecorder = null;
@@ -34,9 +37,9 @@ function stopTimer() { clearInterval(timerId); timerId = null; }
 const WAVE_MIN_HZ = 60;
 const WAVE_MAX_HZ = 6000;
 const WAVE_GAMMA = 1.4;        // >1 拉開強弱對比；調大更戲劇化，調回 1 即為線性
-const WAVE_PEAK_DECAY = 0.93;  // 峰值追隨器每幀的衰減率，越小則基準回落越快
+const WAVE_PEAK_DECAY = 0.93;  // 峰值追隨器每幀的衰減率，越小則基準回落越快（以 60fps 計；120Hz 螢幕上會減半）
 const WAVE_SPEECH_SPAN = 20;   // 超出死區多少（0–255）即視為滿強度；調大則更不敏感
-const WAVE_NOISE_BLOCK = 300;  // 底噪視窗的區塊長度（幀）；實際視窗為 5–10 秒
+const WAVE_NOISE_BLOCK = 300;  // 底噪視窗的區塊長度（幀）；實際視窗為 5–10 秒（以 60fps 計；120Hz 螢幕上會減半）
 const WAVE_NOISE_MULT = 1.8;   // 死區＝底噪 × 此倍數 + 下方常數
 const WAVE_NOISE_ADD = 6;
 const WAVE_NOISE_MIN = 15;     // 死區的絕對下限，避免極安靜的環境把死區壓到 0
@@ -79,8 +82,9 @@ function drawWave() {
     // 底噪估計＝最近約 5–10 秒的最低平均音量（兩個區塊的滑動視窗最小值）。
     // 為什麼是最小值而不是移動平均：移動平均會被說話聲拉高，而一旦拉高就形成
     // 正回饋死鎖——死區跟著升高、更多語音被當成底噪、最終整排在說話中途凍住。
-    // 最小值在結構上不可能被說話聲拉高（語音在 10 秒內必有字詞間隙落回底噪），
-    // 房間變吵時則會在一個視窗內自動適應。
+    // 需要一個區塊內至少出現一次字詞間隙——語音通常滿足。若是持續不斷的聲音
+    // （朗讀、外放音樂），底噪會暫時鎖到該位準、整排凍住，但下一次停頓即自行
+    // 恢復，不像移動平均版是永久死鎖。房間變吵時則會在一個視窗內自動適應。
     blockMin = Math.min(blockMin, frameMean);
     if (++blockFrames >= WAVE_NOISE_BLOCK) {
       prevBlockMin = blockMin;
@@ -117,7 +121,7 @@ async function startRecording() {
   $('timer').textContent = '00:00';
   const t = $('title').value.trim();
   $('rec-title').textContent = t;
-  $('rec-title').classList.toggle('is-empty', !t);   // visibility:hidden 保留槽位，避免版面上移
+  $('rec-title').classList.toggle('is-empty', !t);   // 槽位由 min-height 保證；.is-empty 是日後為此元素加上背景或底線時的保險
   $('btn-pause').textContent = 'Pause';
   $('view-recording').classList.remove('paused');
   mediaRecorder = new MediaRecorder(stream);
@@ -253,7 +257,7 @@ $('btn-stop').onclick = stopAndAnalyze;
 $('btn-restart').onclick = restartRecording;
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
-$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; autoGrowTitle(); show('idle'); };
+$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); autoGrowTitle(); };
 $('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
 // 視窗關閉時通知伺服器結束（配合啟動器達成「關窗即結束」）。
