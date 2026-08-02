@@ -1,5 +1,9 @@
 const $ = (id) => document.getElementById(id);
 const views = ['idle', 'recording', 'processing', 'done'];
+const BARS = 48;
+for (const el of document.querySelectorAll('.wave')) {
+  el.innerHTML = '<span class="bar"></span>'.repeat(BARS);
+}
 function show(view) {
   for (const v of views) $(`view-${v}`).classList.toggle('hidden', v !== view);
 }
