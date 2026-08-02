@@ -127,13 +127,15 @@
     .linkbtn.is-file { cursor: default; word-break: break-all; }
     .linkbtn.is-file:hover { background: none; }
 
-    /* 處理中：三顆圓點階梯式跳動 */
+    /* 處理中：三個方塊階梯式跳動（尺寸為參考來源的 1.5 倍，與 visualizer 的放大倍率一致）。
+       本頁是唯一垂直置中的狀態——它沒有需要與其他頁對齊的共用元素，置中不會造成對齊問題。 */
+    #view-processing { min-height: inherit; justify-content: center; }
     .ld-stairs {
-      display: flex; gap: 6px; align-items: flex-end;
-      margin-top: 80px; margin-bottom: 20px;
+      display: flex; gap: 9px; align-items: flex-end;
+      margin-bottom: 20px;
     }
     .ld-stairs i {
-      width: 12px; height: 12px; border-radius: 50%;
+      width: 18px; height: 18px;
       background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
       animation: stairs 1.2s ease-in-out infinite;
     }
@@ -141,7 +143,7 @@
     .ld-stairs i:nth-child(3) { animation-delay: .3s; }
     @keyframes stairs {
       0%, 100% { transform: translateY(0); opacity: .3; }
-      50%      { transform: translateY(-14px); opacity: 1; }
+      50%      { transform: translateY(-21px); opacity: 1; }
     }
     .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
 
