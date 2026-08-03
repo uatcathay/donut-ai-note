@@ -20,7 +20,10 @@ fi
 # 1) 確保伺服器就緒（未在跑才啟動；記錄本腳本啟動的 PID）
 SERVER_PID=""
 if ! curl -s "http://localhost:$PORT/" >/dev/null 2>&1; then
-  "$NODE_BIN" src/server.js >/tmp/browser-ai-note.log 2>&1 &
+  # APP_MODE=1 讓 /shutdown 真的結束伺服器（關窗即結束）。
+  # 不設此變數時（例如開發用的 npm start），/shutdown 只會留下提示、不結束程序，
+  # 這樣在一般瀏覽器分頁重新整理才不會把自己的伺服器關掉。
+  APP_MODE=1 "$NODE_BIN" src/server.js >/tmp/browser-ai-note.log 2>&1 &
   SERVER_PID=$!
   for _ in $(seq 1 40); do
     if curl -s "http://localhost:$PORT/" >/dev/null 2>&1; then break; fi
