@@ -31,6 +31,32 @@ export function parseGeminiJson(text) {
   }
 }
 
+// 每個遠端往返的逾時上限。沒有這道保護時，Gemini 一旦不回應，
+// 使用者就只能看著「分析中」無限轉下去（實測曾卡住三分鐘以上才在網路層失敗）。
+const STEP_TIMEOUT_MS = 120_000;
+
+export function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new AppError('analyze', `${label}超過 ${Math.round(ms / 1000)} 秒沒有回應，請重試。`)),
+      ms,
+    );
+    timer.unref?.();   // 不要因為這個計時器而讓程序無法結束
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// undici 的網路錯誤訊息是「fetch failed」，直接丟給使用者看等於沒說。
+export function describeFailure(err, label) {
+  if (err instanceof AppError) return err;
+  const raw = String(err?.message || err);
+  if (/fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(raw)) {
+    return new AppError('analyze', `${label}時連線 Gemini 失敗，請確認網路後用同一段錄音重試。`);
+  }
+  return new AppError('analyze', `${label}失敗：${raw}`);
+}
+
 // 分析總耗時是三個接連的遠端往返加起來的，但從外面看只是「很久」。
 // 印出各階段的秒數與佔比，才知道要優化哪一段（別憑感覺猜）。
 export function formatTimings({ uploadMs, waitMs, generateMs, bytes }) {
@@ -48,32 +74,47 @@ async function callGemini(prompt, audioBuffer, mimeType) {
   const blob = new Blob([audioBuffer], { type: mimeType });
 
   const t0 = Date.now();
-  let file = await ai.files.upload({ file: blob, config: { mimeType } });
-  const tUploaded = Date.now();
-
+  let tUploaded = t0;
+  let tReady = t0;
   let polls = 0;
-  while (file.state === 'PROCESSING') {
-    await new Promise((r) => setTimeout(r, 1500));
-    file = await ai.files.get({ name: file.name });
-    polls += 1;
+
+  const report = (tag) => console.log(
+    formatTimings({
+      uploadMs: tUploaded - t0,
+      waitMs: tReady - tUploaded,
+      generateMs: Date.now() - tReady,
+      bytes: audioBuffer.length,
+    }) + `　輪詢 ${polls} 次${tag}`,
+  );
+
+  try {
+    let file = await withTimeout(
+      ai.files.upload({ file: blob, config: { mimeType } }), STEP_TIMEOUT_MS, '上傳音檔');
+    tUploaded = Date.now();
+
+    // 輪詢也要有上限，否則檔案一直停在 PROCESSING 就會無限迴圈
+    while (file.state === 'PROCESSING') {
+      if (Date.now() - tUploaded > STEP_TIMEOUT_MS) {
+        throw new AppError('analyze', '音檔在雲端處理逾時，請重試。');
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+      file = await withTimeout(ai.files.get({ name: file.name }), STEP_TIMEOUT_MS, '查詢音檔狀態');
+      polls += 1;
+    }
+    tReady = Date.now();
+
+    if (file.state === 'FAILED') throw new AppError('analyze', '音檔上傳處理失敗');
+    const res = await withTimeout(ai.models.generateContent({
+      model: MODEL,
+      contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
+    }), STEP_TIMEOUT_MS, '分析錄音');
+
+    report('');
+    return res.text;
+  } catch (err) {
+    report('　← 失敗');   // 失敗時同樣印出計時，才知道卡在哪一段
+    throw describeFailure(err, '分析');
   }
-  const tReady = Date.now();
-
-  if (file.state === 'FAILED') throw new AppError('analyze', '音檔上傳處理失敗');
-  const res = await ai.models.generateContent({
-    model: MODEL,
-    contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
-  });
-  const tDone = Date.now();
-
-  console.log(formatTimings({
-    uploadMs: tUploaded - t0,
-    waitMs: tReady - tUploaded,
-    generateMs: tDone - tReady,
-    bytes: audioBuffer.length,
-  }) + `　輪詢 ${polls} 次`);
-
-  return res.text;
 }
 
 export async function analyze(audioBuffer, mimeType, deps = {}) {

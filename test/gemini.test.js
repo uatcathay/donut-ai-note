@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout } from '../src/analyzers/gemini.js';
 
 test('buildPrompt 要求繁中且禁止講者標記', () => {
   const p = buildPrompt();
@@ -44,4 +44,30 @@ test('formatTimings 合計為 0 時不會除以零', () => {
   const line = formatTimings({ uploadMs: 0, waitMs: 0, generateMs: 0, bytes: 0 });
   assert.match(line, /合計 0\.0s/);
   assert.doesNotMatch(line, /NaN/);
+});
+
+test('describeFailure 把 undici 的 fetch failed 換成看得懂的說明', () => {
+  const e = describeFailure(new TypeError('fetch failed'), '分析');
+  assert.equal(e.stage, 'analyze');
+  assert.match(e.message, /連線/);
+  assert.doesNotMatch(e.message, /fetch failed/);
+});
+
+test('describeFailure 保留原本就看得懂的錯誤訊息', () => {
+  const e = describeFailure(new Error('API key not valid'), '分析');
+  assert.equal(e.stage, 'analyze');
+  assert.match(e.message, /API key not valid/);
+});
+
+test('withTimeout 在時限內完成則原樣回傳結果', async () => {
+  const v = await withTimeout(Promise.resolve('ok'), 1000, '分析');
+  assert.equal(v, 'ok');
+});
+
+test('withTimeout 逾時拋出帶階段與秒數的錯誤，而不是無限等待', async () => {
+  const never = new Promise(() => {});
+  await assert.rejects(
+    () => withTimeout(never, 50, '分析'),
+    (e) => e.stage === 'analyze' && /分析/.test(e.message) && /沒有回應/.test(e.message),
+  );
 });
