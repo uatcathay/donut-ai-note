@@ -19,6 +19,14 @@ export function checkConfig(env) {
   return warnings;
 }
 
+// 前端在 pagehide 時會送 /shutdown，讓「關掉 App 小窗＝結束伺服器」成立。
+// 但在一般瀏覽器分頁裡，重新整理／關分頁／切換網址同樣會觸發 pagehide，
+// 開發時伺服器會被自己關掉。因此只有啟動器（設 APP_MODE=1）啟動的程序才真的退出。
+export function makeShutdown(env, { exit = () => process.exit(0), log = console.warn } = {}) {
+  if (env.APP_MODE === '1') return exit;
+  return () => log('[開發模式] 收到 /shutdown，已忽略（只有 App 啟動器會設定 APP_MODE=1 並結束伺服器）。');
+}
+
 export function createApp(deps = {}) {
   const run = deps.processMeeting || processMeeting;
   const shutdown = deps.onShutdown || (() => process.exit(0));
@@ -61,7 +69,7 @@ export function start() {
   const envPath = path.join(__dirname, '..', '.env');
   if (existsSync(envPath)) process.loadEnvFile(envPath);
   for (const w of checkConfig(process.env)) console.warn('[設定提醒] ' + w);
-  const app = createApp();
+  const app = createApp({ onShutdown: makeShutdown(process.env) });
   const port = process.env.PORT || 3000;
   app.listen(port, () => console.log(`會議記錄工具運作中： http://localhost:${port}`));
 }

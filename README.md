@@ -33,6 +33,8 @@ cp .env.example .env
 
 > 需要 Google Chrome。若沒設定 Notion，結果會存成桌面 `.md`。
 > 開發時也可手動啟動：`npm start`，再開 http://localhost:3000。
+> 「關窗即結束」只在 App 模式生效（啟動器會設定 `APP_MODE=1`）。用 `npm start` 開發時，
+> 重新整理或關分頁**不會**把伺服器關掉，要停止請按 Ctrl+C。
 
 ## 四、測試
 
