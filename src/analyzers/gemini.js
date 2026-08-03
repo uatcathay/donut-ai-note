@@ -35,6 +35,12 @@ export function parseGeminiJson(text) {
 // 使用者就只能看著「分析中」無限轉下去（實測曾卡住三分鐘以上才在網路層失敗）。
 const STEP_TIMEOUT_MS = 120_000;
 
+// 這個模型預設會做 thinking，而實測它在這個任務上思考的 token 是實際輸出的兩倍，
+// 白白多花約 40% 的時間。thinkingBudget: 0 會被拒絕（400），但給一個很小的預算
+// 就等同關閉——實測 thinking 實際用量為 0，耗時 25.5s → 16.1s，
+// 且輸出品質（標題、摘要、重點數、逐字稿長度）沒有可見差異。
+const THINKING_BUDGET = 128;
+
 export function withTimeout(promise, ms, label) {
   let timer;
   const timeout = new Promise((_, reject) => {
@@ -107,6 +113,7 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     const res = await withTimeout(ai.models.generateContent({
       model: MODEL,
       contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
+      config: { thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
     }), STEP_TIMEOUT_MS, '分析錄音');
 
     report('');
