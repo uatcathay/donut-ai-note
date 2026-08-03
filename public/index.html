@@ -51,7 +51,8 @@
 
     /* 標題：固定單行。高度是寫死的常數，三個狀態共用同一組規格，
        所以無論標題多長都不可能推動下方的麥克風——這是把版面位移這個變因徹底消掉。
-       輸入以 maxlength 硬性限制字數；顯示端超出寬度則以 … 截斷。
+       輸入以 maxlength=16 硬性限制字數：中文全形字在 18px 字級下每字約 18px，
+       288 ÷ 18 = 16，剛好填滿底線寬度而不溢出。顯示端超出寬度則以 … 截斷。
        寬度 288px 對齊 visualizer 的整排長條，底線與波形同寬。 */
     .title-input, .rec-title, .done-title {
       width: 288px; height: calc(1.4em + 13px); margin-bottom: 52px;
@@ -209,7 +210,7 @@
 <body>
   <main class="stage">
     <section id="view-idle" class="panel">
-      <input id="title" type="text" class="title-input" maxlength="30" placeholder="會議標題（選填，空白就讓 AI 命名）" />
+      <input id="title" type="text" class="title-input" maxlength="16" placeholder="會議標題（選填，空白就讓 AI 命名）" />
       <button id="btn-start" class="orb" title="開始錄音" aria-label="開始錄音">
         <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
