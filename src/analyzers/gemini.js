@@ -31,20 +31,48 @@ export function parseGeminiJson(text) {
   }
 }
 
+// 分析總耗時是三個接連的遠端往返加起來的，但從外面看只是「很久」。
+// 印出各階段的秒數與佔比，才知道要優化哪一段（別憑感覺猜）。
+export function formatTimings({ uploadMs, waitMs, generateMs, bytes }) {
+  const total = uploadMs + waitMs + generateMs;
+  const sec = (ms) => `${(ms / 1000).toFixed(1)}s`;
+  const pct = (ms) => `${total === 0 ? 0 : Math.round((ms / total) * 100)}%`;
+  const mb = (bytes / 1024 / 1024).toFixed(1);
+  return `[計時] 上傳 ${sec(uploadMs)} (${pct(uploadMs)})｜等待 ${sec(waitMs)} (${pct(waitMs)})`
+    + `｜生成 ${sec(generateMs)} (${pct(generateMs)})｜合計 ${sec(total)}（音檔 ${mb}MB）`;
+}
+
 async function callGemini(prompt, audioBuffer, mimeType) {
   const { GoogleGenAI, createUserContent, createPartFromUri } = await import('@google/genai');
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const blob = new Blob([audioBuffer], { type: mimeType });
+
+  const t0 = Date.now();
   let file = await ai.files.upload({ file: blob, config: { mimeType } });
+  const tUploaded = Date.now();
+
+  let polls = 0;
   while (file.state === 'PROCESSING') {
     await new Promise((r) => setTimeout(r, 1500));
     file = await ai.files.get({ name: file.name });
+    polls += 1;
   }
+  const tReady = Date.now();
+
   if (file.state === 'FAILED') throw new AppError('analyze', '音檔上傳處理失敗');
   const res = await ai.models.generateContent({
     model: MODEL,
     contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
   });
+  const tDone = Date.now();
+
+  console.log(formatTimings({
+    uploadMs: tUploaded - t0,
+    waitMs: tReady - tUploaded,
+    generateMs: tDone - tReady,
+    bytes: audioBuffer.length,
+  }) + `　輪詢 ${polls} 次`);
+
   return res.text;
 }
 
