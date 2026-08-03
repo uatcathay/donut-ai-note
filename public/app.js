@@ -212,12 +212,12 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 function renderDone(body) {
   $('done-title').textContent = body.title || '';
+  // 寫入 Notion 時不顯示連結——使用者不會從這裡點進去看（Notion 網頁還要再登入一次）。
+  // 但輸出成 .md 時仍要顯示路徑，否則使用者不知道檔案在哪。
   const link = $('result-link');
-  if (body.destination.type === 'notion') {
-    link.textContent = '開啟 Notion 記錄';
-    link.href = body.destination.url;
-    link.classList.remove('is-file');
-  } else {
+  const isFile = body.destination.type !== 'notion';
+  link.classList.toggle('hidden', !isFile);
+  if (isFile) {
     link.textContent = `已存成桌面檔案：${body.destination.filePath}`;
     link.removeAttribute('href');
     link.classList.add('is-file');
@@ -240,21 +240,6 @@ function clearError() {
   $('btn-retry').classList.add('hidden');
 }
 
-// 標題輸入：隨行數自動長高，上限兩行（再多則於欄位內捲動）。
-// 錄音頁與完成頁對應為 -webkit-line-clamp: 2，兩邊上限一致，長標題才不會推動下方版面。
-const TITLE_MAX_LINES = 2;
-function autoGrowTitle() {
-  const el = $('title');
-  el.style.height = 'auto';
-  const line = parseFloat(getComputedStyle(el).lineHeight);
-  const max = line * TITLE_MAX_LINES + 13;   // padding 12 + 底線 1
-  el.style.height = `${Math.min(el.scrollHeight + 1, max)}px`;
-}
-$('title').addEventListener('input', autoGrowTitle);
-// 會議標題不需要換行，Enter 不插入換行
-$('title').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
-autoGrowTitle();
-
 // 複製摘要：取 innerText（而非 innerHTML）才會拿到人看得懂的純文字，
 // 且 <li> 之間會保留換行。成功後短暫把圖示換成勾勾當作回饋。
 let copiedTimer = null;
@@ -276,7 +261,7 @@ $('btn-stop').onclick = stopAndAnalyze;
 $('btn-restart').onclick = restartRecording;
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
-$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); autoGrowTitle(); };
+$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };
 $('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
 // 視窗關閉時通知伺服器結束（配合啟動器達成「關窗即結束」）。

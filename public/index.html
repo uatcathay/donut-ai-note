@@ -40,26 +40,25 @@
       font-family: -apple-system, "PingFang TC", sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    /* min-height 固定，內容自頂端起排：狀態切換時外框高度不變，垂直置中的結果因此恆定 */
+    /* 不設 min-height：body 改為靠上對齊後，.stage 的頂端位置已經固定，
+       高度不再影響任何元素的位置。留著 580px 只會在視窗縮短時逼出不必要的捲軸。 */
     .stage {
-      width: 100%; max-width: 320px; min-height: 580px;
+      width: 100%; max-width: 320px;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .hidden { display: none !important; }
 
-    /* 標題：三個頁面的槽位規格必須完全一致，否則切換時會產生垂直位移。
-       最多兩行——待機頁的 textarea 隨行數自動長高（上限兩行、再多則於欄位內捲動），
-       錄音頁與完成頁超過兩行以 … 截斷。因為上限相同，長標題不會再推動下方的麥克風。
-       min-height 取「一行的完整高度」（1.4em 行高 + 12px padding + 1px 底線），
-       讓「空標題」與「一行標題」在三個狀態下高度完全一致。 */
+    /* 標題：固定單行。高度是寫死的常數，三個狀態共用同一組規格，
+       所以無論標題多長都不可能推動下方的麥克風——這是把版面位移這個變因徹底消掉。
+       輸入以 maxlength 硬性限制字數；顯示端超出寬度則以 … 截斷。
+       寬度 288px 對齊 visualizer 的整排長條，底線與波形同寬。 */
     .title-input, .rec-title, .done-title {
-      min-height: calc(1.4em + 13px); margin-bottom: 52px;
+      width: 288px; height: calc(1.4em + 13px); margin-bottom: 52px;
       padding: 6px 0; border-bottom: 1px solid transparent;
       font-size: 18px; line-height: 1.4; text-align: center;
     }
     .title-input {
-      width: 100%; display: block; resize: none; overflow-y: auto;
       border: 0; border-bottom: 1px solid transparent; outline: none;
       background: none; color: var(--fg); font-family: inherit;
     }
@@ -68,12 +67,11 @@
     .title-input:placeholder-shown { caret-color: transparent; }
     .title-input::placeholder { color: var(--fg-30); }
     .title-input:focus { border-bottom-color: var(--fg-30); }
-    /* 錄音頁／完成頁：最多兩行，超出以 … 截斷 */
+    /* 錄音頁／完成頁：單行，超出寬度以 … 截斷 */
     .rec-title, .done-title {
-      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-      overflow: hidden;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    /* 槽位由 min-height 保證；.is-empty 是日後為此元素加上背景或底線時的保險 */
+    /* 槽位高度是寫死的固定值；.is-empty 是日後為此元素加上背景或底線時的保險 */
     .rec-title.is-empty { visibility: hidden; }
 
     /* 中央大按鈕 */
@@ -129,6 +127,8 @@
     .linkbtn:hover { background: var(--fg-10); }
     .linkbtn--danger { color: var(--danger); }
     .linkbtn + .linkbtn { margin-top: 20px; }
+    /* 前一個控制項被隱藏時（例如寫入 Notion 而不顯示檔案路徑），不要留下它的間距 */
+    .linkbtn.hidden + .linkbtn { margin-top: 0; }
     /* .md 輸出時連結不可點，只作為路徑顯示 */
     .linkbtn.is-file { cursor: default; word-break: break-all; }
     .linkbtn.is-file:hover { background: none; }
@@ -209,7 +209,7 @@
 <body>
   <main class="stage">
     <section id="view-idle" class="panel">
-      <textarea id="title" class="title-input" rows="1" placeholder="會議標題（選填，空白就讓 AI 命名）"></textarea>
+      <input id="title" type="text" class="title-input" maxlength="30" placeholder="會議標題（選填，空白就讓 AI 命名）" />
       <button id="btn-start" class="orb" title="開始錄音" aria-label="開始錄音">
         <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
