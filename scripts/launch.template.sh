@@ -5,6 +5,22 @@ PROJECT_DIR="__PROJECT_DIR__"
 PORT="__PORT__"
 NODE_BIN="__NODE__"   # 由 build-app.sh 以 `command -v node` 注入絕對路徑（GUI 啟動時 PATH 精簡，不能只靠 node）
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+PROFILE="$HOME/.browser-ai-note-chrome"
+
+# 0) 已經開著就只把視窗帶到前面，不要再開一個。
+#    點 Dock 圖示時 macOS 會再啟動一個本腳本；沒有這道守衛的話它會再執行一次
+#    Chrome 指令，而 Chrome 見到同 profile 已有實例就把指令轉給它，
+#    結果跳出一個普通瀏覽器視窗（不是 app 視窗）。
+#    比對時排除 --type=（那些是 renderer/GPU 等 helper 程序，不是主視窗）。
+for p in $(pgrep -f -- "--user-data-dir=$PROFILE" 2>/dev/null); do
+  case "$(ps -p "$p" -o command= 2>/dev/null)" in
+    *--type=*) ;;
+    *)
+      osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $p) to true" >/dev/null 2>&1
+      exit 0
+      ;;
+  esac
+done
 
 cd "$PROJECT_DIR" 2>/dev/null || {
   osascript -e 'display alert "Browser AI Note" message "找不到專案目錄，請重新建置。"'
@@ -45,7 +61,7 @@ fi
 
 # 3) 開獨立小窗（專屬設定檔，與日常 Chrome 分離）。背景啟動，不阻塞。
 #    macOS 上關掉最後一個視窗 Chrome 並不會退出，所以不靠等 Chrome 結束來判斷關窗。
-"$CHROME" --user-data-dir="$HOME/.browser-ai-note-chrome" \
+"$CHROME" --user-data-dir="$PROFILE" \
   --no-first-run --no-default-browser-check \
   --app="http://localhost:$PORT/" \
   --window-size=480,720 >/dev/null 2>&1 &
