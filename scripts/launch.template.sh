@@ -1,26 +1,14 @@
 #!/bin/bash
 # Browser AI Note 啟動器（此為樣板；實際檔案由 build-app.sh 注入路徑後產生於 .app 內）
-# 行為：確保伺服器就緒 → 開 Chrome 獨立小窗 → 阻塞至關窗 → 關掉本腳本啟動的伺服器
+# 行為：確保伺服器就緒 → 用日常 Chrome 開一個 app 視窗 → 阻塞至關窗 → 關掉本腳本啟動的伺服器
 PROJECT_DIR="__PROJECT_DIR__"
 PORT="__PORT__"
 NODE_BIN="__NODE__"   # 由 build-app.sh 以 `command -v node` 注入絕對路徑（GUI 啟動時 PATH 精簡，不能只靠 node）
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-PROFILE="$HOME/.browser-ai-note-chrome"
 
-# 0) 已經開著就只把視窗帶到前面，不要再開一個。
-#    點 Dock 圖示時 macOS 會再啟動一個本腳本；沒有這道守衛的話它會再執行一次
-#    Chrome 指令，而 Chrome 見到同 profile 已有實例就把指令轉給它，
-#    結果跳出一個普通瀏覽器視窗（不是 app 視窗）。
-#    比對時排除 --type=（那些是 renderer/GPU 等 helper 程序，不是主視窗）。
-for p in $(pgrep -f -- "--user-data-dir=$PROFILE" 2>/dev/null); do
-  case "$(ps -p "$p" -o command= 2>/dev/null)" in
-    *--type=*) ;;
-    *)
-      osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $p) to true" >/dev/null 2>&1
-      exit 0
-      ;;
-  esac
-done
+LAUNCH_LOG="/tmp/browser-ai-note-launch.log"
+log() { echo "$(date '+%H:%M:%S') pid=$$ ppid=$PPID $1" >> "$LAUNCH_LOG"; }
+log "啟動器被執行"
 
 cd "$PROJECT_DIR" 2>/dev/null || {
   osascript -e 'display alert "Browser AI Note" message "找不到專案目錄，請重新建置。"'
@@ -59,17 +47,18 @@ if [ -z "$SERVER_PID" ]; then
   SERVER_PID="$(lsof -ti:"$PORT" 2>/dev/null | head -1)"
 fi
 
-# 3) 開獨立小窗（專屬設定檔，與日常 Chrome 分離）。背景啟動，不阻塞。
-#    macOS 上關掉最後一個視窗 Chrome 並不會退出，所以不靠等 Chrome 結束來判斷關窗。
-"$CHROME" --user-data-dir="$PROFILE" \
-  --no-first-run --no-default-browser-check \
-  --app="http://localhost:$PORT/" \
-  --window-size=480,720 >/dev/null 2>&1 &
+# 3) 用「日常的 Chrome」開一個 app 視窗（--app 提供無網址列、無標籤列的乾淨小窗）。
+#    刻意不使用 --user-data-dir：獨立設定檔會另外冷啟一個 Chrome 實例，
+#    造成啟動慢約 5 秒，且該實例在 Dock 上是獨立圖示——點它時 Chrome 會判定
+#    「只有 app 視窗、沒有一般瀏覽器視窗」而多開一個新分頁視窗。
+#    交由日常 Chrome 承載後，這兩個問題一併消失，視窗外觀完全不變。
+log "開 app 視窗"
+"$CHROME" --app="http://localhost:$PORT/" --window-size=480,720 >/dev/null 2>&1 &
 
 # 4) 關窗即結束：使用者關閉視窗時，頁面會打 /shutdown 讓伺服器程序自己退出。
-#    這裡監看伺服器程序；它一消失，代表視窗已關，接著關掉 app 視窗的 Chrome 實例並結束。
+#    這裡監看伺服器程序；它一消失就代表視窗已關，本腳本隨之結束。
+#    注意：不可以再 pkill Chrome——現在承載視窗的是使用者日常的 Chrome。
 while [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; do
   sleep 0.5
 done
-pkill -f "browser-ai-note-chrome" 2>/dev/null
 exit 0
