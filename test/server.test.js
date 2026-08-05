@@ -102,3 +102,32 @@ test('makeShutdown：非 App 模式忽略時會留下提示訊息', () => {
   assert.equal(lines.length, 1);
   assert.ok(lines[0].includes('/shutdown'));
 });
+
+test('GET /manifest.webmanifest 提供可安裝 PWA 的必要欄位', async () => {
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  const { port } = server.address();
+  const res = await fetch(`http://localhost:${port}/manifest.webmanifest`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /application\/manifest\+json/);
+  const m = await res.json();
+  assert.equal(m.name, 'Browser AI Note');
+  assert.equal(m.start_url, '/');
+  assert.equal(m.display, 'standalone');
+  const sizes = m.icons.map((i) => i.sizes);
+  assert.ok(sizes.includes('192x192'), '缺 192x192 圖示');
+  assert.ok(sizes.includes('512x512'), '缺 512x512 圖示');
+  server.close();
+});
+
+test('manifest 宣告的圖示檔實際取得得到', async () => {
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  const { port } = server.address();
+  for (const p of ['/icons/icon-192.png', '/icons/icon-512.png']) {
+    const res = await fetch(`http://localhost:${port}${p}`);
+    assert.equal(res.status, 200, `${p} 取不到`);
+    assert.match(res.headers.get('content-type'), /image\/png/);
+  }
+  server.close();
+});
