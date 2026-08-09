@@ -68,17 +68,12 @@ test('POST /api/process 無音檔回 400 upload', async () => {
 });
 
 test('/shutdown 已移除（伺服器改為常駐，關窗不再結束程序）', async (t) => {
-  try {
-    const app = createApp({ processMeeting: async () => ({}) });
-    const server = app.listen(0);
-    const { port } = server.address();
-    const res = await fetch(`http://localhost:${port}/shutdown`, { method: 'POST' });
-    assert.equal(res.status, 404);
-    server.close();
-  } catch (e) {
-    console.error('Regression test error:', e);
-    throw e;
-  }
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(`http://localhost:${port}/shutdown`, { method: 'POST' });
+  assert.equal(res.status, 404);
 });
 
 test('GET /manifest.webmanifest 提供可安裝 PWA 的必要欄位', async () => {

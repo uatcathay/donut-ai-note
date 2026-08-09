@@ -19,7 +19,6 @@ export function checkConfig(env) {
   return warnings;
 }
 
-
 export function createApp(deps = {}) {
   const run = deps.processMeeting || processMeeting;
   const app = express();
