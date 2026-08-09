@@ -284,6 +284,8 @@ Expected: FAIL — 三項皆因 `scripts/install-launchagent.sh` 不存在而拋
 
 建立 `scripts/install-launchagent.sh`：
 
+> **註（回填，2026-08-09）**：下方腳本是本步驟當時寫出的版本。後續 `f201e93`（同分支，Task 5 之後）另外做了一輪硬化——拒絕未知參數、`--uninstall` 不再受 node／專案結構前置檢查卡住、驗證失敗時卸載並移除剛寫入的 plist——並補了對應測試，但未回填進本文件，導致這裡曾與實際程式碼不一致。目前程式碼中的版本（含 `usage`、`require_node`、`require_project_layout`、失敗自我收尾）才是最終行為，請以 `scripts/install-launchagent.sh` 原始碼為準。
+
 ```bash
 #!/bin/bash
 # 安裝／反安裝 Browser AI Note 的常駐伺服器（macOS LaunchAgent）。
@@ -435,14 +437,16 @@ import { checkConfig, createApp } from '../src/server.js';
 
 3. 在原位置加上回歸測試：
 
+> **註（回填，2026-08-09）**：下方是當時寫出的初版。`aa6f614` 後續改用 `t.after` 做清理，避免測試在斷言失敗時因跳過 `server.close()` 造成 socket 洩漏；目前程式碼中的版本已是 `t.after` 版，請以 `test/server.test.js` 原始碼為準。
+
 ```js
-test('/shutdown 已移除（伺服器改為常駐，關窗不再結束程序）', async () => {
+test('/shutdown 已移除（伺服器改為常駐，關窗不再結束程序）', async (t) => {
   const app = createApp({ processMeeting: async () => ({}) });
   const server = app.listen(0);
+  t.after(() => server.close());
   const { port } = server.address();
   const res = await fetch(`http://localhost:${port}/shutdown`, { method: 'POST' });
   assert.equal(res.status, 404);
-  server.close();
 });
 ```
 
@@ -616,4 +620,4 @@ git diff main --stat
 
 - **Spec 涵蓋**：manifest → Task 1；LaunchAgent → Task 3；移除舊 `.app` → Task 5；移除 shutdown → Task 4；手動安裝 → Task 2；兩階段關卡 → Task 2 的硬性關卡與 Global Constraints。皆有對應任務。
 - **命名一致性**：`install-launchagent.sh` 的三個模式（無參數／`--uninstall`／`--print-plist`）在 Task 3、5、6 與 README 中用法一致；Label `com.local.browser-ai-note` 全篇一致。
-- **測試計數**：49 →（Task 1）51 →（Task 3）54 →（Task 4）51，各 Task 的 Expected 已依此標註。
+- **測試計數**：49 →（Task 1）51 →（Task 3）54 →（Task 4）51 →（`f201e93` 硬化安裝腳本，追加「未知參數」測試，回填說明見 Task 3 Step 3）52。各 Task 內文的 Expected 仍依當時的計數標註；分支最終狀態是 **52 個測試、0 個失敗**。

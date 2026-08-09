@@ -77,13 +77,16 @@
 
 - `ProgramArguments`：node 絕對路徑 + `src/server.js`（launchd 的 PATH 極精簡，**必須**注入絕對路徑，沿用 `build-app.sh` 既有的 `command -v node` 做法）
 - `WorkingDirectory`：專案根目錄（伺服器需讀取專案根的 `.env`）
+- `EnvironmentVariables.PORT`：安裝當下從執行 shell 的環境變數讀入（預設 `3000`），寫死進 plist
 - `RunAtLoad`：`true`
 - `KeepAlive`：`true`（crash 自動重啟）
 - `StandardOutPath` / `StandardErrorPath`：`/tmp/browser-ai-note.log`
 
-腳本行為：偵測專案路徑與 node 路徑 → 寫入 plist → `launchctl unload`（若已存在）→ `launchctl load` → 以 `curl` 輪詢驗證 `localhost:3000` 起得來，失敗則印出 log 尾端。提供 `--uninstall` 反安裝。
+腳本行為：偵測專案路徑與 node 路徑 → 寫入 plist → `launchctl bootout`（若已存在）→ `launchctl bootstrap` → 以 `curl` 輪詢驗證 `localhost:3000` 起得來，失敗則印出 log 尾端。提供 `--uninstall` 反安裝、`--print-plist` 只印出 plist 內容供測試（不產生任何副作用）；未知參數會被拒絕並印出用法說明。
 
 **已知限制**：plist 內含專案絕對路徑，日後搬移專案目錄需重跑本腳本。腳本會在載入前檢查路徑是否存在並明確報錯。
+
+**失敗自我收尾**：`curl` 輪詢逾時仍未驗證成功時，腳本會卸載剛載入的 job 並移除剛寫入的 plist，讓機器回到「未安裝」的乾淨狀態，而不是留下一個 `KeepAlive` 會無限重啟的壞掉服務。
 
 ### 3. 移除舊 App Bundle
 
@@ -164,3 +167,4 @@ Chrome 無可靠的命令列安裝介面，需使用者手動執行一次：在�
 1. **麥克風權限是唯一真正的未知數**。同源同設定檔理應沿用，但未實測；列為第一階段關卡第 3 項，不通過就退場。
 2. 伺服器常駐後，錄音資料的存取不再有「關窗即停」這道界線。
 3. 常駐 node 程序約佔 40MB 記憶體。
+4. **網路曝露面從「時間窗」變成「無限期」**。伺服器原本只在 App 視窗開著的幾分鐘內存在，改常駐後變成開機後即持續運作，且 `/api/process` 無任何身分驗證。若監聽位址是 `0.0.0.0`（wildcard），同一區網（例如咖啡店、辦公室 Wi-Fi）內的任何人都能打這個端點，消耗使用者的 Gemini 額度、寫入使用者的 Notion 父頁面或桌面 `.md`。**決定**：`src/server.js` 的 `app.listen` 明確綁定 `127.0.0.1`（loopback），不接受區網連線；這是本次設計沿用既有錄音／分析流程之外，唯一需要異動 `server.js` 監聽行為的項目。
