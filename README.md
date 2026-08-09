@@ -40,12 +40,24 @@ cp .env.example .env
 > 停用背景伺服器：`bash scripts/install-launchagent.sh --uninstall`。
 > 開發時仍可 `npm start`（需先 `--uninstall` 或改用其他 `PORT`，否則埠會衝突）。
 
-## 四、測試
+## 四、故障排除
+
+- **搬動了專案目錄**：plist 內寫死的是絕對路徑，搬移後常駐服務會失效，重新執行 `bash scripts/install-launchagent.sh` 即可（腳本會用新路徑覆寫舊 plist）。
+- **行為異常時先看 log**：`/tmp/browser-ai-note.log`，伺服器的 stdout/stderr 都寫在這裡。
+- **刪掉專案資料夾前忘了 `--uninstall`**（目前無法自動復原的孤兒情境）：
+  `~/Library/LaunchAgents/com.local.browser-ai-note.plist` 會留在原地，launchd 每 10 秒重試一次已經不存在的執行檔，而原本能移除它的腳本也隨資料夾一起消失了。手動清除：
+  ```
+  launchctl bootout gui/$UID/com.local.browser-ai-note
+  rm ~/Library/LaunchAgents/com.local.browser-ai-note.plist
+  ```
+- **PORT 設定不一致**：`PORT` 是在安裝當下從執行 shell 的環境變數寫進 plist 的。若安裝時的 shell 有另外 export 過 `PORT`，常駐服務會改聽那個埠，但已安裝的 Chrome shim 仍指向 `localhost:3000`——症狀是點圖示出現連線錯誤。安裝前先確認 `echo $PORT` 是空的（或等於 3000），或重新以未覆寫 `PORT` 的 shell 執行安裝腳本。
+
+## 五、測試
 
 - 自動化：`npm test`
-- 前端手動測試清單見實作計畫 Task 10 Step 3。
+- 前端手動測試清單見 `docs/superpowers/plans/2026-07-31-meeting-recorder.md` Task 10 Step 3——該清單寫於 2026-08-02 錄音頁重新設計之前，描述的是舊版 UI，僅供對照測試步驟的大致流程，畫面細節請以目前實際畫面為準。
 
-## 五、費用與限制
+## 六、費用與限制
 
 - Gemini 免費版：約每天 250 次請求、單場會議建議 2 小時內。個人用足夠，且不產生費用。
 - 免費版資料可能被 Google 用於改善模型；機密會議請斟酌。
