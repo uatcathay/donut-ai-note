@@ -550,6 +550,9 @@ rm -rf "Browser AI Note.app" assets/icon.iconset
 
 > 需要 Google Chrome。若沒設定 Notion，結果會存成桌面 `.md`。
 > 視窗大小由 Chrome 記憶：手動調整後，關窗時的大小會成為下次開啟的大小。
+> **Chrome 沒在執行時，第一次點圖示會慢幾秒**——App 視窗由 Chrome 主程序承載，
+> 系統得先啟動 Chrome 才輪到這個視窗。這是 Chrome PWA 的共通行為（任何已安裝的
+> 網頁應用程式皆然），非本工具的缺陷。Chrome 已在執行時則接近瞬開。
 > 停用背景伺服器：`bash scripts/install-launchagent.sh --uninstall`。
 > 開發時仍可 `npm start`（需先 `--uninstall` 或改用其他 `PORT`，否則埠會衝突）。
 ```
