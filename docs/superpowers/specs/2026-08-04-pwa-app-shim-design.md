@@ -159,7 +159,8 @@ Chrome 無可靠的命令列安裝介面，需使用者手動執行一次：在�
 
 - **新增**：`GET /manifest.webmanifest` 回應 200、MIME 正確、必要欄位（`name`、`start_url`、`display`、`icons`）齊全
 - **移除**：`/shutdown` 與 `APP_MODE` 相關的既有測試（第二階段）
-- **不寫自動化測試**：LaunchAgent 與 PWA 安裝屬系統層設定，以實機驗收關卡涵蓋
+- **新增**：`install-launchagent.sh --print-plist` 的輸出（label、`RunAtLoad`、`KeepAlive`、`ProgramArguments` 為絕對路徑、`WorkingDirectory` 指向專案根），以及未知參數會被拒絕。此模式無副作用，故可自動化
+- **不寫自動化測試**：`launchctl` 的實際載入行為與 PWA 安裝屬系統層設定，會變動機器狀態，以實機驗收關卡涵蓋
 - 其餘既有測試維持全綠
 
 ## 風險
