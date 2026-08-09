@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { checkConfig, createApp, makeShutdown } from '../src/server.js';
+import { checkConfig, createApp } from '../src/server.js';
 
 test('checkConfig 缺 GEMINI_API_KEY 提出警告', () => {
   const w = checkConfig({});
@@ -67,40 +67,18 @@ test('POST /api/process 無音檔回 400 upload', async () => {
   server.close();
 });
 
-test('POST /shutdown 回 200 並呼叫 onShutdown（注入 spy，不真的退出）', async () => {
-  let called = 0;
-  const app = createApp({
-    processMeeting: async () => ({}),
-    onShutdown: () => { called += 1; },
-  });
-  const server = app.listen(0);
-  const { port } = server.address();
-  const res = await fetch(`http://localhost:${port}/shutdown`, { method: 'POST' });
-  assert.equal(res.status, 200);
-  assert.equal(called, 1);
-  server.close();
-});
-
-test('makeShutdown：App 模式下收到 /shutdown 會真的結束程序', () => {
-  let exited = 0;
-  const shutdown = makeShutdown({ APP_MODE: '1' }, { exit: () => { exited += 1; } });
-  shutdown();
-  assert.equal(exited, 1);
-});
-
-test('makeShutdown：非 App 模式（一般分頁開發）收到 /shutdown 不結束程序', () => {
-  let exited = 0;
-  const shutdown = makeShutdown({}, { exit: () => { exited += 1; }, log: () => {} });
-  shutdown();
-  assert.equal(exited, 0);
-});
-
-test('makeShutdown：非 App 模式忽略時會留下提示訊息', () => {
-  const lines = [];
-  const shutdown = makeShutdown({}, { exit: () => {}, log: (m) => lines.push(m) });
-  shutdown();
-  assert.equal(lines.length, 1);
-  assert.ok(lines[0].includes('/shutdown'));
+test('/shutdown 已移除（伺服器改為常駐，關窗不再結束程序）', async (t) => {
+  try {
+    const app = createApp({ processMeeting: async () => ({}) });
+    const server = app.listen(0);
+    const { port } = server.address();
+    const res = await fetch(`http://localhost:${port}/shutdown`, { method: 'POST' });
+    assert.equal(res.status, 404);
+    server.close();
+  } catch (e) {
+    console.error('Regression test error:', e);
+    throw e;
+  }
 });
 
 test('GET /manifest.webmanifest 提供可安裝 PWA 的必要欄位', async () => {
