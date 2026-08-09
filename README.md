@@ -26,15 +26,19 @@ cp .env.example .env
 
 ## 三、使用
 
-1. 首次或更新後，先建置 App：`bash scripts/build-app.sh`（會在專案根目錄產生 `Browser AI Note.app`）。
-2. **雙擊 `Browser AI Note`**（可拖到 Dock）→ 會開一個獨立小視窗。
-3. 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
-4. **關閉視窗即結束**（背景伺服器會一併關閉，不留殘留程序）。
+1. 首次安裝：`bash scripts/install-launchagent.sh`（伺服器會在每次登入時自動於背景啟動）。
+2. 接著在 Chrome 開啟 http://localhost:3000/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
+   完成後 `~/Applications/Chrome Apps.localized/Browser AI Note.app` 即為正式 App，可拖到 Dock。
+3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
+4. 關閉視窗只是關視窗，背景伺服器持續運作，下次點圖示即可瞬開。
 
 > 需要 Google Chrome。若沒設定 Notion，結果會存成桌面 `.md`。
-> 開發時也可手動啟動：`npm start`，再開 http://localhost:3000。
-> 「關窗即結束」只在 App 模式生效（啟動器會設定 `APP_MODE=1`）。用 `npm start` 開發時，
-> 重新整理或關分頁**不會**把伺服器關掉，要停止請按 Ctrl+C。
+> 視窗大小由 Chrome 記憶：手動調整後，關窗時的大小會成為下次開啟的大小。
+> **Chrome 沒在執行時，第一次點圖示會慢幾秒**——App 視窗由 Chrome 主程序承載，
+> 系統得先啟動 Chrome 才輪到這個視窗。這是 Chrome PWA 的共通行為（任何已安裝的
+> 網頁應用程式皆然），非本工具的缺陷。Chrome 已在執行時則接近瞬開。
+> 停用背景伺服器：`bash scripts/install-launchagent.sh --uninstall`。
+> 開發時仍可 `npm start`（需先 `--uninstall` 或改用其他 `PORT`，否則埠會衝突）。
 
 ## 四、測試
 
