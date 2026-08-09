@@ -35,3 +35,21 @@ test('--print-plist 的 WorkingDirectory 指向專案根（伺服器需讀 .env�
   assert.ok(wd, '找不到 WorkingDirectory');
   assert.equal(wd[1].replace(/\/$/, ''), ROOT.replace(/\/$/, ''));
 });
+
+test('未知參數會直接失敗並顯示用法，不會誤觸安裝流程', () => {
+  // 這條路徑必須在任何 node／專案結構檢查、寫檔、launchctl 呼叫之前就退出，
+  // 所以斷言只看 exit code 與 stderr，不驗證任何機器狀態（本測試無副作用）。
+  assert.throws(
+    () => {
+      execFileSync('bash', ['scripts/install-launchagent.sh', '--bogus'], {
+        cwd: ROOT, encoding: 'utf8',
+      });
+    },
+    (err) => {
+      assert.notEqual(err.status, 0, '未知參數應以非 0 結束');
+      assert.match(err.stderr, /--print-plist/);
+      assert.match(err.stderr, /--uninstall/);
+      return true;
+    },
+  );
+});
