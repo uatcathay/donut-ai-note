@@ -100,6 +100,18 @@ require_project_layout
 mkdir -p "$(dirname "$PLIST")"
 print_plist > "$PLIST"
 unload_if_loaded
+
+# 卸載自己這個 LaunchAgent 後，若埠仍被佔用，代表是別的程序（例如手動執行的
+# npm start）在用它。這種情況下就算 curl 輪詢成功，也只是量到別人的伺服器，
+# launchd 這邊實際是 EADDRINUSE crash-loop（KeepAlive 每 10 秒重啟一次），
+# 跟腳本印出的「已安裝並啟動」正好相反，必須在啟動前擋下來。
+if lsof -ti:"$PORT" >/dev/null 2>&1; then
+  echo "錯誤：連接埠 $PORT 已被其他程序占用（例如手動執行中的 npm start），無法安裝常駐服務。" >&2
+  echo "請先停止該程序（例如：lsof -ti:$PORT | xargs kill），再重新執行本腳本。" >&2
+  rm -f "$PLIST"
+  exit 1
+fi
+
 launchctl bootstrap "gui/$UID" "$PLIST"
 
 # 驗證真的起得來，避免留下一個載入了卻跑不動的服務
