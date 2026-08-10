@@ -10,6 +10,14 @@ test('buildPrompt 要求繁中且禁止講者標記', () => {
   assert.match(p, /suggestedTitle/);
 });
 
+test('buildPrompt 不鎖死摘要句數，改為依會議內容伸縮', () => {
+  const p = buildPrompt();
+  // 舊版寫死「3-5 句的摘要」，長會議與短會議拿到一樣的篇幅
+  assert.doesNotMatch(p, /\d+\s*-\s*\d+\s*句/);
+  assert.match(p, /依會議實際內容決定/);
+  assert.match(p, /該長就長/);
+});
+
 test('parseGeminiJson 解析純 JSON', () => {
   const obj = parseGeminiJson('{"summary":"s","keyPoints":["a"],"transcript":"t","suggestedTitle":"x"}');
   assert.equal(obj.summary, 's');
