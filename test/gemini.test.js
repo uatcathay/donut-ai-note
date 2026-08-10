@@ -1,7 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs } from '../src/analyzers/gemini.js';
+
+const MB = 1024 * 1024;
+
+test('stepTimeoutMs：小音檔仍保有原本的 120 秒基本保護', () => {
+  const ms = stepTimeoutMs(1.4 * MB);   // 實測 5 分鐘的會議約 1.4MB
+  assert.ok(ms >= 120_000, `應至少 120 秒，實得 ${ms}`);
+  assert.ok(ms < 130_000, `小檔不該被拉長太多，實得 ${ms}`);
+});
+
+test('stepTimeoutMs：兩小時錄音不會再被 120 秒攔腰砍斷', () => {
+  // 實測 114.6MB 的兩小時錄音，生成在 120.0s 整被自家逾時中斷
+  const ms = stepTimeoutMs(114.6 * MB);
+  assert.ok(ms > 360_000, `兩小時的錄音至少要給到 6 分鐘，實得 ${ms}`);
+});
+
+test('stepTimeoutMs：再大的音檔也有封頂，不會變成無限等待', () => {
+  assert.equal(stepTimeoutMs(10_000 * MB), 900_000);
+});
+
 
 test('buildPrompt 要求繁中且禁止講者標記', () => {
   const p = buildPrompt();

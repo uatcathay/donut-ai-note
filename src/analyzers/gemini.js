@@ -39,7 +39,18 @@ export function parseGeminiJson(text) {
 
 // 每個遠端往返的逾時上限。沒有這道保護時，Gemini 一旦不回應，
 // 使用者就只能看著「分析中」無限轉下去（實測曾卡住三分鐘以上才在網路層失敗）。
-const STEP_TIMEOUT_MS = 120_000;
+//
+// 但這個上限必須隨音檔長度伸縮：120 秒是以五分鐘的會議（音檔 1.4MB、生成 16 秒）
+// 為樣本訂的，而兩小時的錄音（114.6MB）光是生成就在 120.0s 整被自家逾時攔腰砍斷
+// ——Gemini 當時仍在正常工作。上傳同理：114.6MB 實測 21.7s，網路慢一點就會逼近上限。
+const BASE_TIMEOUT_MS = 120_000;
+const TIMEOUT_PER_MB_MS = 3_000;
+const MAX_TIMEOUT_MS = 900_000;   // 封頂，避免退化成無限等待
+
+export function stepTimeoutMs(bytes) {
+  const mb = bytes / 1024 / 1024;
+  return Math.min(MAX_TIMEOUT_MS, BASE_TIMEOUT_MS + Math.round(mb * TIMEOUT_PER_MB_MS));
+}
 
 // 這個模型預設會做 thinking，而實測它在這個任務上思考的 token 是實際輸出的兩倍，
 // 白白多花約 40% 的時間。thinkingBudget: 0 會被拒絕（400），但給一個很小的預算
@@ -85,6 +96,8 @@ async function callGemini(prompt, audioBuffer, mimeType) {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const blob = new Blob([audioBuffer], { type: mimeType });
 
+  const timeoutMs = stepTimeoutMs(audioBuffer.length);
+
   const t0 = Date.now();
   let tUploaded = t0;
   let tReady = t0;
@@ -101,16 +114,16 @@ async function callGemini(prompt, audioBuffer, mimeType) {
 
   try {
     let file = await withTimeout(
-      ai.files.upload({ file: blob, config: { mimeType } }), STEP_TIMEOUT_MS, '上傳音檔');
+      ai.files.upload({ file: blob, config: { mimeType } }), timeoutMs, '上傳音檔');
     tUploaded = Date.now();
 
     // 輪詢也要有上限，否則檔案一直停在 PROCESSING 就會無限迴圈
     while (file.state === 'PROCESSING') {
-      if (Date.now() - tUploaded > STEP_TIMEOUT_MS) {
+      if (Date.now() - tUploaded > timeoutMs) {
         throw new AppError('analyze', '音檔在雲端處理逾時，請重試。');
       }
       await new Promise((r) => setTimeout(r, 1500));
-      file = await withTimeout(ai.files.get({ name: file.name }), STEP_TIMEOUT_MS, '查詢音檔狀態');
+      file = await withTimeout(ai.files.get({ name: file.name }), timeoutMs, '查詢音檔狀態');
       polls += 1;
     }
     tReady = Date.now();
@@ -120,7 +133,7 @@ async function callGemini(prompt, audioBuffer, mimeType) {
       model: MODEL,
       contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
       config: { thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
-    }), STEP_TIMEOUT_MS, '分析錄音');
+    }), timeoutMs, '分析錄音');
 
     report('');
     return res.text;
