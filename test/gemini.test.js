@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry } from '../src/analyzers/gemini.js';
 
 const MB = 1024 * 1024;
 
@@ -35,6 +35,71 @@ test('buildPrompt 不鎖死摘要句數，改為依會議內容伸縮', () => {
   assert.doesNotMatch(p, /\d+\s*-\s*\d+\s*句/);
   assert.match(p, /依會議實際內容決定/);
   assert.match(p, /該長就長/);
+});
+
+// Gemini 免費版尖峰時段會回 503 UNAVAILABLE，這是對方的容量問題、過幾分鐘就好。
+// 實測一段 15 分鐘的錄音就這樣失敗過，而使用者只能自己一直按重試。
+const err503 = () => new Error('got status: 503 {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}');
+const err429 = () => new Error('got status: 429 {"error":{"code":429,"message":"Quota exceeded","status":"RESOURCE_EXHAUSTED"}}');
+
+test('isRetryable：503／UNAVAILABLE 屬於暫時性錯誤，值得重試', () => {
+  assert.equal(isRetryable(err503()), true);
+});
+
+test('isRetryable：429 配額用盡不重試（免費版額度不會在幾秒內恢復）', () => {
+  assert.equal(isRetryable(err429()), false);
+});
+
+test('isRetryable：一般錯誤與自家逾時都不重試', () => {
+  assert.equal(isRetryable(new Error('壞掉了')), false);
+  assert.equal(isRetryable(new AppError('analyze', '分析錄音超過 464 秒沒有回應，請重試。')), false);
+});
+
+test('withRetry：暫時性錯誤會重試，成功就回傳結果', async () => {
+  let calls = 0;
+  const slept = [];
+  const out = await withRetry(async () => {
+    calls += 1;
+    if (calls < 3) throw err503();
+    return 'ok';
+  }, { delays: [10, 20, 30], sleep: async (ms) => { slept.push(ms); }, log: () => {} });
+  assert.equal(out, 'ok');
+  assert.equal(calls, 3);
+  assert.deepEqual(slept, [10, 20]);
+});
+
+test('withRetry：重試用完仍失敗就把錯誤丟出來', async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => withRetry(async () => { calls += 1; throw err503(); },
+      { delays: [10, 20], sleep: async () => {}, log: () => {} }),
+    /503/);
+  assert.equal(calls, 3, '應為首次加兩次重試');
+});
+
+test('withRetry：不可重試的錯誤立刻丟出，不浪費時間等待', async () => {
+  let calls = 0;
+  const slept = [];
+  await assert.rejects(
+    () => withRetry(async () => { calls += 1; throw err429(); },
+      { delays: [10, 20], sleep: async (ms) => { slept.push(ms); }, log: () => {} }),
+    /429/);
+  assert.equal(calls, 1);
+  assert.deepEqual(slept, []);
+});
+
+test('describeFailure：503 翻成人看得懂的話，不要把 JSON 原文丟到畫面上', () => {
+  const e = describeFailure(err503(), '分析');
+  assert.equal(e.stage, 'analyze');
+  assert.doesNotMatch(e.message, /\{|"code"|UNAVAILABLE/);
+  assert.match(e.message, /忙碌|尖峰/);
+  assert.match(e.message, /稍後/);
+});
+
+test('describeFailure：429 要說是用量上限，而不是叫人一直重試', () => {
+  const e = describeFailure(err429(), '分析');
+  assert.doesNotMatch(e.message, /\{|"code"/);
+  assert.match(e.message, /用量|額度/);
 });
 
 test('parseGeminiJson 解析純 JSON', () => {

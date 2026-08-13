@@ -70,12 +70,46 @@ export function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-// undici 的網路錯誤訊息是「fetch failed」，直接丟給使用者看等於沒說。
+// 免費版尖峰時段會回 503 UNAVAILABLE，是 Google 那端的容量問題、過幾分鐘就好。
+// 這種錯誤自己重試遠比叫使用者一直按重試合理——而且檔案已經上傳完，重試只要重打生成。
+export function isRetryable(err) {
+  if (err instanceof AppError) return false;   // 自家的逾時／驗證錯誤重試也沒用
+  const raw = String(err?.message || err);
+  if (/RESOURCE_EXHAUSTED|"code"\s*:\s*429/.test(raw)) return false;   // 配額用盡不會在幾秒內恢復
+  return /UNAVAILABLE|INTERNAL|high demand|overloaded|"code"\s*:\s*(500|502|503|504)/i.test(raw);
+}
+
+const RETRY_DELAYS_MS = [5_000, 15_000, 45_000];
+
+export async function withRetry(attempt, opts = {}) {
+  const delays = opts.delays || RETRY_DELAYS_MS;
+  const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const log = opts.log || console.log;
+  const label = opts.label || '';
+  for (let i = 0; ; i += 1) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (i >= delays.length || !isRetryable(err)) throw err;
+      log(`[重試] ${label}遇到暫時性錯誤，${delays[i] / 1000} 秒後重試（第 ${i + 1}/${delays.length} 次）`);
+      await sleep(delays[i]);
+    }
+  }
+}
+
+// undici 的網路錯誤訊息是「fetch failed」，Gemini 的則是一整包 JSON，
+// 兩者直接丟給使用者看都等於沒說。原文留在 log，畫面上給人話。
 export function describeFailure(err, label) {
   if (err instanceof AppError) return err;
   const raw = String(err?.message || err);
   if (/fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(raw)) {
     return new AppError('analyze', `${label}時連線 Gemini 失敗，請確認網路後用同一段錄音重試。`);
+  }
+  if (/RESOURCE_EXHAUSTED|"code"\s*:\s*429/.test(raw)) {
+    return new AppError('analyze', '已達 Gemini 免費版的用量上限，請稍後或明天再用同一段錄音重試。');
+  }
+  if (/UNAVAILABLE|high demand|overloaded|"code"\s*:\s*(500|502|503|504)/i.test(raw)) {
+    return new AppError('analyze', 'Gemini 目前忙碌（免費版尖峰時段），已自動重試多次仍未成功。這是對方的暫時性問題，稍後用同一段錄音重試即可。');
   }
   return new AppError('analyze', `${label}失敗：${raw}`);
 }
@@ -129,11 +163,13 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     tReady = Date.now();
 
     if (file.state === 'FAILED') throw new AppError('analyze', '音檔上傳處理失敗');
-    const res = await withTimeout(ai.models.generateContent({
+    // 只重試生成，不重傳檔案——檔案已在 Gemini 端（114.6MB 上傳實測要 57 秒）。
+    // 每次嘗試各自吃一份完整逾時額度，退避時間不佔用它。
+    const res = await withRetry(() => withTimeout(ai.models.generateContent({
       model: MODEL,
       contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
       config: { thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
-    }), timeoutMs, '分析錄音');
+    }), timeoutMs, '分析錄音'), { label: '分析錄音' });
 
     report('');
     return res.text;

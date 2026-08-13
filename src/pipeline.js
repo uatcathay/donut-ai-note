@@ -2,6 +2,11 @@ import { AppError } from './errors.js';
 import { formatStamp } from './clock.js';
 import { analyze as defaultAnalyze } from './analyzers/index.js';
 import { writeOutput as defaultWriteOutput } from './outputs/index.js';
+import {
+  buildRecordingName,
+  saveRecording as defaultSaveRecording,
+  discardRecording as defaultDiscardRecording,
+} from './recordings.js';
 
 export function decideTitle(userTitle, suggestedTitle, dateStr) {
   const u = (userTitle || '').trim();
@@ -23,19 +28,40 @@ export function validateAnalysis(a) {
 export async function processMeeting(input, deps = {}) {
   const analyzeFn = deps.analyze || defaultAnalyze;
   const writeFn = deps.writeOutput || defaultWriteOutput;
+  const save = deps.saveRecording || defaultSaveRecording;
+  const discard = deps.discardRecording || defaultDiscardRecording;
   const now = deps.now || (() => new Date());
 
-  const analysis = await analyzeFn(input.audioBuffer, input.mimeType);
-  validateAnalysis(analysis);
-
   const stamp = formatStamp(now());
-  const title = decideTitle(input.userTitle, analysis.suggestedTitle, stamp.date);
-  const result = {
-    title,
-    summary: analysis.summary,
-    keyPoints: analysis.keyPoints,
-    transcript: analysis.transcript,
-  };
-  const destination = await writeFn(result, stamp);
+
+  // 先落地再分析：分析與寫出都可能失敗（Gemini 尖峰時段常回 503），
+  // 而錄音是這條流程裡唯一無法重來的東西。
+  const recordingName = buildRecordingName(input.userTitle, stamp, input.mimeType);
+  const recordingPath = await save(input.audioBuffer, recordingName);
+
+  let analysis;
+  let result;
+  let destination;
+  try {
+    analysis = await analyzeFn(input.audioBuffer, input.mimeType);
+    validateAnalysis(analysis);
+
+    const title = decideTitle(input.userTitle, analysis.suggestedTitle, stamp.date);
+    result = {
+      title,
+      summary: analysis.summary,
+      keyPoints: analysis.keyPoints,
+      transcript: analysis.transcript,
+    };
+    destination = await writeFn(result, stamp);
+  } catch (err) {
+    // 保留錄音，並讓使用者知道它還在——否則畫面關掉就等於永久遺失
+    err.message = `${err.message}（錄音已保留：${recordingName}，可稍後重試）`;
+    err.recordingPath = recordingPath;
+    throw err;
+  }
+
+  // 結果已經寫進 Notion 或 .md，原始音檔沒有留存的必要
+  await discard(recordingPath);
   return { ...result, destination };
 }
