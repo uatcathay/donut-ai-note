@@ -50,9 +50,40 @@ test('isRetryable：429 配額用盡不重試（免費版額度不會在幾秒�
   assert.equal(isRetryable(err429()), false);
 });
 
-test('isRetryable：一般錯誤與自家逾時都不重試', () => {
+test('isRetryable：一般錯誤不重試（逾時走另一條規則，見下方 withRetry）', () => {
   assert.equal(isRetryable(new Error('壞掉了')), false);
   assert.equal(isRetryable(new AppError('analyze', '分析錄音超過 464 秒沒有回應，請重試。')), false);
+});
+
+test('withTimeout 逾時錯誤帶 timedOut 記號，讓重試邏輯認得出來', async () => {
+  await assert.rejects(
+    () => withTimeout(new Promise(() => {}), 5, '分析錄音'),
+    (e) => e.timedOut === true);
+});
+
+// Gemini 忙碌時有兩種表現：直接回 503，或掛住不回應直到我們把它砍掉。
+// 實測後者：同一個檔案當下逾時（>132s），隔幾分鐘重跑只要 15.8s。
+test('withRetry：逾時會自動重試一次，且不浪費時間退避', async () => {
+  let calls = 0;
+  const slept = [];
+  const timeout = () => Object.assign(new AppError('analyze', '逾時'), { timedOut: true });
+  const out = await withRetry(async () => {
+    calls += 1;
+    if (calls === 1) throw timeout();
+    return 'ok';
+  }, { sleep: async (ms) => { slept.push(ms); }, log: () => {} });
+  assert.equal(out, 'ok');
+  assert.equal(calls, 2);
+  assert.deepEqual(slept, [], '逾時本身已經等很久了，不該再退避');
+});
+
+test('withRetry：逾時只重試一次，第二次逾時就放棄', async () => {
+  let calls = 0;
+  const timeout = () => Object.assign(new AppError('analyze', '逾時'), { timedOut: true });
+  await assert.rejects(
+    () => withRetry(async () => { calls += 1; throw timeout(); }, { sleep: async () => {}, log: () => {} }),
+    (e) => e.timedOut === true);
+  assert.equal(calls, 2, '首次加一次重試就該停手，否則兩小時的錄音會等到天荒地老');
 });
 
 test('withRetry：暫時性錯誤會重試，成功就回傳結果', async () => {

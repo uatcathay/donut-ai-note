@@ -62,7 +62,11 @@ export function withTimeout(promise, ms, label) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(
-      () => reject(new AppError('analyze', `${label}超過 ${Math.round(ms / 1000)} 秒沒有回應，請重試。`)),
+      () => {
+        const err = new AppError('analyze', `${label}超過 ${Math.round(ms / 1000)} 秒沒有回應，請重試。`);
+        err.timedOut = true;   // 讓 withRetry 認得出這是「掛住」而非一般失敗
+        reject(err);
+      },
       ms,
     );
     timer.unref?.();   // 不要因為這個計時器而讓程序無法結束
@@ -81,18 +85,36 @@ export function isRetryable(err) {
 
 const RETRY_DELAYS_MS = [5_000, 15_000, 45_000];
 
+// 逾時另計，而且只給一次。Gemini 忙碌時不一定回 503，也可能掛住不回應——
+// 實測同一個檔案當下逾時（>132s），隔幾分鐘重跑只要 15.8s，所以重試是值得的。
+// 但每次嘗試都要吃掉一份完整逾時額度，給太多次會讓長錄音等到天荒地老。
+const TIMEOUT_RETRIES = 1;
+
 export async function withRetry(attempt, opts = {}) {
   const delays = opts.delays || RETRY_DELAYS_MS;
+  const timeoutRetries = opts.timeoutRetries ?? TIMEOUT_RETRIES;
   const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const log = opts.log || console.log;
   const label = opts.label || '';
-  for (let i = 0; ; i += 1) {
+  let transientUsed = 0;
+  let timeoutUsed = 0;
+  for (;;) {
     try {
       return await attempt();
     } catch (err) {
-      if (i >= delays.length || !isRetryable(err)) throw err;
-      log(`[重試] ${label}遇到暫時性錯誤，${delays[i] / 1000} 秒後重試（第 ${i + 1}/${delays.length} 次）`);
-      await sleep(delays[i]);
+      if (err?.timedOut && timeoutUsed < timeoutRetries) {
+        timeoutUsed += 1;
+        log(`[重試] ${label}逾時，立即重試（第 ${timeoutUsed}/${timeoutRetries} 次；逾時本身已等很久，不再退避）`);
+        continue;
+      }
+      if (isRetryable(err) && transientUsed < delays.length) {
+        const wait = delays[transientUsed];
+        transientUsed += 1;
+        log(`[重試] ${label}遇到暫時性錯誤，${wait / 1000} 秒後重試（第 ${transientUsed}/${delays.length} 次）`);
+        await sleep(wait);
+        continue;
+      }
+      throw err;
     }
   }
 }
