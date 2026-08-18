@@ -13,6 +13,7 @@
       --grad-to: #F52D8E;
       --fg: #1a1a1a;
       --fg-strong: #494949;   /* 主要可點文字與圖示 */
+      --fg-emphasis: #373737; /* 比 --fg-strong 再深一階，給畫面上的主角文字 */
       --fg-muted: #707070;   /* 次要文字與細邊框；改成固定灰而非半透明，深淺底上都可控 */
       --fg-10: rgba(26, 26, 26, .1);
       --preview-bg: #F5F5F5;
@@ -25,6 +26,7 @@
       :root {
         --fg: #f2f2f2;
         --fg-strong: #c8c8c8;   /* 深底上的對應灰度 */
+        --fg-emphasis: #e8e8e8;
         --fg-muted: #909090;   /* 深底上的對應灰度，與淺色模式的可讀性相當 */
         --fg-10: rgba(242, 242, 242, .1);
         /* 深色模式維持半透明淺色：直接用 #F5F5F5 會變成近白底配近白字，讀不到 */
@@ -156,7 +158,8 @@
       0%, 100% { transform: translateY(0); opacity: .3; }
       50%      { transform: translateY(-21px); opacity: 1; }
     }
-    .proc-stage { font-size: 16px; color: var(--fg-strong); text-align: center; }
+    /* 比其他可點文字更深：分析中它是畫面上唯一的主角 */
+    .proc-stage { font-size: 16px; color: var(--fg-emphasis); text-align: center; }
     /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
     .proc-detail {
       margin-top: 20px; font-size: 14px; line-height: 1.7;
