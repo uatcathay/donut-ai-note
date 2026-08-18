@@ -13,7 +13,7 @@
       --grad-to: #F52D8E;
       --fg: #1a1a1a;
       --fg-70: rgba(26, 26, 26, .7);
-      --fg-30: rgba(26, 26, 26, .3);
+      --fg-muted: #707070;   /* 次要文字與細邊框；改成固定灰而非半透明，深淺底上都可控 */
       --fg-10: rgba(26, 26, 26, .1);
       --preview-bg: #F5F5F5;
       --bg: #ffffff;
@@ -25,7 +25,7 @@
       :root {
         --fg: #f2f2f2;
         --fg-70: rgba(242, 242, 242, .7);
-        --fg-30: rgba(242, 242, 242, .3);
+        --fg-muted: #909090;   /* 深底上的對應灰度，與淺色模式的可讀性相當 */
         --fg-10: rgba(242, 242, 242, .1);
         /* 深色模式維持半透明淺色：直接用 #F5F5F5 會變成近白底配近白字，讀不到 */
         --preview-bg: rgba(242, 242, 242, .1);
@@ -72,8 +72,8 @@
     /* 空欄位時不顯示游標——置中對齊下，正中央一條閃爍直線很突兀。
        一旦有文字就恢復顯示，否則打字時看不到插入點、無法修改中間的字。 */
     .title-input:placeholder-shown { caret-color: transparent; }
-    .title-input::placeholder { color: var(--fg-30); }
-    .title-input:focus { border-bottom-color: var(--fg-30); }
+    .title-input::placeholder { color: var(--fg-muted); }
+    .title-input:focus { border-bottom-color: var(--fg-muted); }
     /* 錄音頁／完成頁：單行，超出寬度以 … 截斷 */
     .rec-title, .done-title {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -104,7 +104,7 @@
       margin-bottom: 20px;
       font-family: 'Azeret Mono', ui-monospace, monospace;
       font-size: 14px; font-variant-numeric: tabular-nums;
-      color: var(--fg-30);
+      color: var(--fg-muted);
     }
     #view-recording .timer { color: var(--fg-70); }
 
@@ -160,15 +160,15 @@
     /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
     .proc-detail {
       margin-top: 20px; font-size: 14px; line-height: 1.7;
-      color: var(--fg-30); text-align: center; min-height: calc(1.7em * 3);
+      color: var(--fg-muted); text-align: center; min-height: calc(1.7em * 3);
     }
     .proc-detail.is-retrying { color: var(--danger); }
     /* 待辦清單：刻意低調，它是提醒不是主角 */
     .pending { margin-top: 100px; width: 100%; text-align: left; }
-    .pending-title { font-size: 11px; color: var(--fg-30); margin-bottom: 6px; }
+    .pending-title { font-size: 11px; color: var(--fg-muted); margin-bottom: 6px; }
     .pending-item {
       display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-      font-size: 12px; color: var(--fg-30); padding: 6px 0;
+      font-size: 12px; color: var(--fg-muted); padding: 6px 0;
     }
     .pending-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pending-actions { display: flex; gap: 12px; }
@@ -176,7 +176,7 @@
       background: none; border: none; padding: 0; cursor: pointer;
       font-size: 12px; color: var(--fg-70); text-decoration: underline;
     }
-    .pending-item button:disabled { color: var(--fg-30); cursor: default; text-decoration: none; }
+    .pending-item button:disabled { color: var(--fg-muted); cursor: default; text-decoration: none; }
 
     /* 完成 */
     .done-title { margin-bottom: 20px; }   /* 高度與字級由上方共用規則提供 */
@@ -201,7 +201,7 @@
       width: 28px; height: 28px; padding: 0;
       display: flex; align-items: center; justify-content: center;
       border: 0; border-radius: 6px; background: none;
-      color: var(--fg-30); cursor: pointer;
+      color: var(--fg-muted); cursor: pointer;
       transition: background-color .2s, color .2s;
     }
     .copy-btn:hover { background: var(--fg-10); color: var(--fg-70); }
@@ -211,7 +211,7 @@
     .copy-btn.copied .ico-copy { display: none; }
     .copy-btn.copied .ico-check { display: block; }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
-    #preview .pv-note { display: block; margin-top: 40px; color: var(--fg-30); }
+    #preview .pv-note { display: block; margin-top: 40px; color: var(--fg-muted); }
     /* 兩大區的標題：份量要明顯大於議題標題，否則四層文字看起來一樣重 */
     .pv-section { margin: 0 0 10px; font-size: 20px; font-weight: 700; }
     .pv-section + .pv-topic { margin-top: 0; }
@@ -222,7 +222,7 @@
     #preview ul.pv-todo li { position: relative; padding-left: 22px; margin-bottom: 4px; }
     #preview ul.pv-todo li::before {
       content: ''; position: absolute; left: 0; top: 3px;
-      width: 12px; height: 12px; border: 1.5px solid var(--fg-30); border-radius: 3px;
+      width: 12px; height: 12px; border: 1.5px solid var(--fg-muted); border-radius: 3px;
     }
 
     /* 確認對話框（原生 <dialog>：外觀自訂，焦點鎖定與 Esc 關閉由瀏覽器提供） */
