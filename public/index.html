@@ -156,9 +156,9 @@
       0%, 100% { transform: translateY(0); opacity: .3; }
       50%      { transform: translateY(-21px); opacity: 1; }
     }
-    .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
+    .proc-stage { font-size: 16px; color: var(--fg-70); text-align: center; }
     /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
-    .proc-detail { margin-top: 6px; font-size: 12px; color: var(--fg-30); text-align: center; min-height: 1.4em; }
+    .proc-detail { margin-top: 20px; font-size: 14px; color: var(--fg-30); text-align: center; min-height: 1.4em; }
     .proc-detail.is-retrying { color: var(--danger); }
     /* 待辦清單：刻意低調，它是提醒不是主角 */
     .pending { margin-top: 100px; width: 100%; text-align: left; }
@@ -190,7 +190,7 @@
       height: 600px; overflow-y: auto;
       padding: 28px 20px 12px; border-radius: 10px;   /* 上緣多留 16px 給複製鈕 */
       background: var(--preview-bg);
-      font-size: 12px; line-height: 1.6;   /* 內文字級；兩區標題與議題標題另有指定 */
+      font-size: 14px; line-height: 1.6;   /* 內文字級；兩區標題與議題標題另有指定 */
       text-align: left;
     }
     .copy-btn {
@@ -208,11 +208,12 @@
     .copy-btn.copied .ico-copy { display: none; }
     .copy-btn.copied .ico-check { display: block; }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
+    #preview .pv-note { display: block; margin-top: 20px; color: var(--fg-30); }
     /* 兩大區的標題：份量要明顯大於議題標題，否則四層文字看起來一樣重 */
-    .pv-section { margin: 0 0 10px; font-size: 18px; font-weight: 700; }
+    .pv-section { margin: 0 0 10px; font-size: 20px; font-weight: 700; }
     .pv-section + .pv-topic { margin-top: 0; }
     #preview .pv-section:not(:first-child) { margin-top: 22px; }
-    .pv-topic { margin: 16px 0 0; font-size: 14px; font-weight: 600; }
+    .pv-topic { margin: 16px 0 0; font-size: 16px; font-weight: 600; }
     /* 待辦用方框呈現。App 這邊是回顧用的預覽，要打勾請到 Notion */
     #preview ul.pv-todo { list-style: none; padding-left: 2px; }
     #preview ul.pv-todo li { position: relative; padding-left: 22px; margin-bottom: 4px; }

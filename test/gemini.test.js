@@ -49,6 +49,20 @@ test('buildPrompt 要求略過寒暄與離題閒聊', () => {
   assert.match(buildPrompt(), /寒暄|閒聊/);
 });
 
+// 筆記正文才是這個 App 大部分的文字，排版規則不交代的話全靠模型自由發揮
+test('buildPrompt 交代中英夾雜的排版規則', () => {
+  const p = buildPrompt();
+  assert.match(p, /全形/);
+  assert.match(p, /半形/);
+  assert.match(p, /空格/);
+});
+
+test('prompt 自身也遵守排版規則：中文與英數字之間要有半形空格', () => {
+  const p = buildPrompt();
+  const bad = p.match(/[一-鿿][A-Za-z0-9]|[A-Za-z0-9][一-鿿]/g) || [];
+  assert.deepEqual(bad, [], `prompt 裡有中英黏在一起的地方：${bad.join('、')}`);
+});
+
 test('buildPrompt 要求待辦沒明講負責人時就不要提負責人', () => {
   const p = buildPrompt();
   assert.match(p, /負責人/);
