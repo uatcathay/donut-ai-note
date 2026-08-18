@@ -264,10 +264,13 @@ async function refreshPending() {
     label.textContent = `${item.label}　分析失敗，再試一次　${fmtMB(item.sizeBytes)}`;
     row.append(label);
 
+    const actions = document.createElement('div');
+    actions.className = 'pending-actions';
+
     const retry = document.createElement('button');
     retry.textContent = '重試';
     retry.onclick = () => retryPending(item, retry);
-    row.append(retry);
+    actions.append(retry);
 
     const del = document.createElement('button');
     del.textContent = '刪除';
@@ -275,8 +278,9 @@ async function refreshPending() {
       await fetch(`/api/pending/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
       refreshPending();
     };
-    row.append(del);
+    actions.append(del);
 
+    row.append(actions);
     box.append(row);
   }
 }

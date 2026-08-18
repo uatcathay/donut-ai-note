@@ -158,13 +158,14 @@
     .proc-detail { margin-top: 6px; font-size: 12px; color: var(--fg-30); text-align: center; min-height: 1.4em; }
     .proc-detail.is-retrying { color: var(--danger); }
     /* 待辦清單：刻意低調，它是提醒不是主角 */
-    .pending { margin-top: 28px; width: 100%; text-align: left; }
+    .pending { margin-top: 100px; width: 100%; text-align: left; }
     .pending-title { font-size: 11px; color: var(--fg-30); margin-bottom: 6px; }
     .pending-item {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; color: var(--fg-30); padding: 4px 0;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+      font-size: 12px; color: var(--fg-30); padding: 6px 0;
     }
-    .pending-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pending-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pending-actions { display: flex; gap: 12px; }
     .pending-item button {
       background: none; border: none; padding: 0; cursor: pointer;
       font-size: 12px; color: var(--fg-70); text-decoration: underline;
