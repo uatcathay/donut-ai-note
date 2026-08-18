@@ -90,7 +90,7 @@
     }
     /* 錄音中的方塊同樣要有 hover 灰底——它是「停止並分析」的觸發點，沒有回饋會看不出可點 */
     .orb:hover { background: var(--fg-10); }
-    .mic { width: 24px; height: 24px; color: var(--fg-70); }
+    .mic { width: 40px; height: 40px; color: var(--fg-70); }
     .cube {
       width: 24px; height: 24px; border-radius: 4px;
       background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
@@ -124,7 +124,6 @@
     }
 
     /* 文字控制項 */
-    .hint { height: 22px; font-size: 16px; color: var(--fg-70); }
     .linkbtn {
       padding: 4px 10px; border: 0; border-radius: 6px;
       background: none; color: var(--fg-70); cursor: pointer;
@@ -260,7 +259,6 @@
       </button>
       <div class="timer" aria-hidden="true">00:00</div>
       <div class="wave" aria-hidden="true"></div>
-      <div class="hint">Click to speak</div>
     </section>
 
     <section id="view-recording" class="panel hidden">
