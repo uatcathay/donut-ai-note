@@ -154,6 +154,9 @@
       50%      { transform: translateY(-21px); opacity: 1; }
     }
     .proc-stage { font-size: 13px; color: var(--fg-70); text-align: center; }
+    /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
+    .proc-detail { margin-top: 6px; font-size: 12px; color: var(--fg-30); text-align: center; min-height: 1.4em; }
+    .proc-detail.is-retrying { color: var(--danger); }
 
     /* 完成 */
     .done-title { margin-bottom: 20px; }   /* 高度與字級由上方共用規則提供 */
@@ -240,6 +243,7 @@
     <section id="view-processing" class="panel hidden">
       <div class="ld-stairs" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="proc-stage" role="status">Analyzing with Gemini…</div>
+      <div class="proc-detail" id="proc-detail" role="status"></div>
     </section>
 
     <section id="view-done" class="panel hidden">

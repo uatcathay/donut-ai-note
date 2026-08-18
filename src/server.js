@@ -4,6 +4,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { processMeeting } from './pipeline.js';
+import { getProgress } from './progress.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -24,6 +25,8 @@ export function createApp(deps = {}) {
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
   app.use(express.static(PUBLIC_DIR));
+  // 分析可能跑上好幾分鐘。前端在等待期間輪詢這裡，才能把「重試中」與「已經死了」分開。
+  app.get('/api/progress', (_req, res) => res.json(getProgress()));
   app.post('/api/process', upload.single('audio'), async (req, res) => {
     try {
       if (!req.file) {

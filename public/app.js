@@ -193,8 +193,52 @@ function stopAndAnalyze() {
   mediaRecorder.stop();
 }
 
+// 分析可能跑好幾分鐘，而畫面上只有一個轉圈。伺服器知道自己在上傳、在分析、
+// 還是在重試——問出來顯示給使用者看，等待才不會被誤認成當機。
+const STAGE_TEXT = { upload: '上傳音檔', analyze: '分析錄音' };
+const RETRY_TEXT = { busy: 'Gemini 忙線中', timeout: 'Gemini 沒有回應' };
+
+function formatElapsed(ms) {
+  const total = Math.floor(ms / 1000);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function describeProgress(p) {
+  if (!p || !p.active) return { text: '', retrying: false };
+  const base = `${STAGE_TEXT[p.stage] || p.stage}　已等 ${formatElapsed(p.elapsedMs)}`;
+  if (!p.retry) return { text: base, retrying: false };
+  const why = RETRY_TEXT[p.retry.reason] || '暫時性錯誤';
+  return { text: `${base}　${why}，第 ${p.retry.attempt}/${p.retry.total} 次重試`, retrying: true };
+}
+
+let progressTimer = null;
+
+function stopProgressPolling() {
+  clearInterval(progressTimer);
+  progressTimer = null;
+  const el = $('proc-detail');
+  el.textContent = '';
+  el.classList.remove('is-retrying');
+}
+
+function startProgressPolling() {
+  stopProgressPolling();
+  const tick = async () => {
+    try {
+      const p = await (await fetch('/api/progress')).json();
+      const { text, retrying } = describeProgress(p);
+      const el = $('proc-detail');
+      el.textContent = text;
+      el.classList.toggle('is-retrying', retrying);
+    } catch { /* 進度查不到不該影響分析本身 */ }
+  };
+  tick();
+  progressTimer = setInterval(tick, 2000);
+}
+
 async function sendForProcessing() {
   show('processing');
+  startProgressPolling();
   const fd = new FormData();
   fd.set('title', $('title').value || '');
   fd.set('audio', lastBlob, 'recording.webm');
@@ -205,6 +249,8 @@ async function sendForProcessing() {
     renderDone(body);
   } catch (e) {
     showError(`處理失敗：${e.message}`, true);
+  } finally {
+    stopProgressPolling();
   }
 }
 

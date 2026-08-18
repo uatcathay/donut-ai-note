@@ -67,6 +67,16 @@ test('POST /api/process 無音檔回 400 upload', async () => {
   server.close();
 });
 
+test('GET /api/progress 讓前端問得到分析進度', async (t) => {
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(`http://localhost:${port}/api/progress`);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { active: false });
+});
+
 test('/shutdown 已移除（伺服器改為常駐，關窗不再結束程序）', async (t) => {
   const app = createApp({ processMeeting: async () => ({}) });
   const server = app.listen(0);

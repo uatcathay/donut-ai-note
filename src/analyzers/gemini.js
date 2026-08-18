@@ -1,4 +1,5 @@
 import { AppError } from '../errors.js';
+import { startAnalysis, setStage, noteRetry, endAnalysis } from '../progress.js';
 
 // gemini-2.5-flash 已對新帳號關閉；用 flash-latest 別名指向當前穩定的免費 flash 模型
 const MODEL = 'gemini-flash-latest';
@@ -96,6 +97,8 @@ export async function withRetry(attempt, opts = {}) {
   const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const log = opts.log || console.log;
   const label = opts.label || '';
+  // 重試必須讓前端看得見，否則使用者只看到轉圈，分不出「還在努力」與「已經死了」
+  const onRetry = opts.onRetry || (() => {});
   let transientUsed = 0;
   let timeoutUsed = 0;
   for (;;) {
@@ -105,12 +108,14 @@ export async function withRetry(attempt, opts = {}) {
       if (err?.timedOut && timeoutUsed < timeoutRetries) {
         timeoutUsed += 1;
         log(`[重試] ${label}逾時，立即重試（第 ${timeoutUsed}/${timeoutRetries} 次；逾時本身已等很久，不再退避）`);
+        onRetry('timeout', timeoutUsed, timeoutRetries);
         continue;
       }
       if (isRetryable(err) && transientUsed < delays.length) {
         const wait = delays[transientUsed];
         transientUsed += 1;
         log(`[重試] ${label}遇到暫時性錯誤，${wait / 1000} 秒後重試（第 ${transientUsed}/${delays.length} 次）`);
+        onRetry('busy', transientUsed, delays.length);
         await sleep(wait);
         continue;
       }
@@ -154,6 +159,7 @@ async function callGemini(prompt, audioBuffer, mimeType) {
 
   const timeoutMs = stepTimeoutMs(audioBuffer.length);
 
+  startAnalysis();
   const t0 = Date.now();
   let tUploaded = t0;
   let tReady = t0;
@@ -183,6 +189,7 @@ async function callGemini(prompt, audioBuffer, mimeType) {
       polls += 1;
     }
     tReady = Date.now();
+    setStage('analyze');
 
     if (file.state === 'FAILED') throw new AppError('analyze', '音檔上傳處理失敗');
     // 只重試生成，不重傳檔案——檔案已在 Gemini 端（114.6MB 上傳實測要 57 秒）。
@@ -191,13 +198,15 @@ async function callGemini(prompt, audioBuffer, mimeType) {
       model: MODEL,
       contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
       config: { thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
-    }), timeoutMs, '分析錄音'), { label: '分析錄音' });
+    }), timeoutMs, '分析錄音'), { label: '分析錄音', onRetry: noteRetry });
 
     report('');
     return res.text;
   } catch (err) {
     report('　← 失敗');   // 失敗時同樣印出計時，才知道卡在哪一段
     throw describeFailure(err, '分析');
+  } finally {
+    endAnalysis();
   }
 }
 
