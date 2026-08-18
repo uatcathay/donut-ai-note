@@ -6,6 +6,7 @@
   <title>Browser AI Note</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="theme-color" content="#F9C05C" />
+  <link rel="stylesheet" href="/fonts.css" />
   <style>
     :root {
       --grad-from: #F9C05C;
@@ -42,7 +43,7 @@
       margin: 0; min-height: 100vh; padding: 70px 24px 24px;
       display: flex; align-items: flex-start; justify-content: center;
       background: var(--bg); color: var(--fg);
-      font-family: -apple-system, "PingFang TC", sans-serif;
+      font-family: 'Azeret Mono', 'Noto Sans TC', -apple-system, "PingFang TC", sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     /* 不設 min-height：body 改為靠上對齊後，.stage 的頂端位置已經固定，
@@ -101,7 +102,7 @@
     /* 計時器 */
     .timer {
       margin-bottom: 8px;
-      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-family: 'Azeret Mono', ui-monospace, monospace;
       font-size: 14px; font-variant-numeric: tabular-nums;
       color: var(--fg-30);
     }
