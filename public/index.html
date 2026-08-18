@@ -15,9 +15,9 @@
       --fg-strong: #494949;   /* 主要可點文字與圖示 */
       --fg-emphasis: #373737; /* 比 --fg-strong 再深一階，給畫面上的主角文字 */
       --fg-muted: #707070;   /* 次要文字與細邊框；改成固定灰而非半透明，深淺底上都可控 */
-      --fg-10: rgba(26, 26, 26, .1);
-      --preview-bg: #F5F5F5;
-      --bg: #ffffff;
+      --surface: #FFFFFF;    /* hover 底色與待機波形；在灰色頁面上以「更亮」表示浮起 */
+      --preview-bg: #FFFFFF;
+      --bg: #F5F5F5;
       --ok: #1a8a4a;
       --danger: #c0392b;
       --danger-bg: rgba(192, 57, 43, .1);
@@ -28,7 +28,7 @@
         --fg-strong: #c8c8c8;   /* 深底上的對應灰度 */
         --fg-emphasis: #e8e8e8;
         --fg-muted: #909090;   /* 深底上的對應灰度，與淺色模式的可讀性相當 */
-        --fg-10: rgba(242, 242, 242, .1);
+        --surface: rgba(242, 242, 242, .1);
         /* 深色模式維持半透明淺色：直接用 #F5F5F5 會變成近白底配近白字，讀不到 */
         --preview-bg: rgba(242, 242, 242, .1);
         --bg: #131313;
@@ -91,7 +91,7 @@
       transition: background-color .2s;
     }
     /* 錄音中的方塊同樣要有 hover 灰底——它是「停止並分析」的觸發點，沒有回饋會看不出可點 */
-    .orb:hover { background: var(--fg-10); }
+    .orb:hover { background: var(--surface); }
     .mic { width: 40px; height: 40px; color: var(--fg-strong); }
     .cube {
       width: 24px; height: 24px; border-radius: 4px;
@@ -117,7 +117,7 @@
     }
     .wave .bar {
       width: 3px; height: 100%; border-radius: 1.5px;
-      background: var(--fg-10);
+      background: var(--surface);
       transform: scaleY(.25); transform-origin: center;
       transition: transform .12s ease-out;
     }
@@ -132,7 +132,7 @@
       font: inherit; font-size: 16px;
       display: inline-block; text-decoration: none;   /* 同一套樣式也用在 <a> 上 */
     }
-    .linkbtn:hover { background: var(--fg-10); }
+    .linkbtn:hover { background: var(--surface); }
     .linkbtn--danger { color: var(--danger); }
     .linkbtn + .linkbtn { margin-top: 20px; }
     /* 前一個控制項被隱藏時（例如寫入 Notion 而不顯示檔案路徑），不要留下它的間距 */
@@ -167,14 +167,15 @@
     }
     .proc-detail.is-retrying { color: var(--danger); }
     /* 待辦清單：刻意低調，它是提醒不是主角 */
-    .pending { margin-top: 100px; width: 100%; text-align: left; }
-    .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 6px; }
+    .pending { margin-top: 100px; width: calc(100vw - 80px); text-align: left; }
+    .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 20px; }
     .pending-item {
-      display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
       font-size: 14px; color: var(--fg-muted); padding: 6px 0;
     }
-    .pending-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .pending-actions { display: flex; gap: 12px; margin-top: 20px; }
+    /* 視窗窄時左側文字換行完整呈現；動作永遠不被壓縮，不能讓使用者按不到 */
+    .pending-label { flex: 1; min-width: 0; }
+    .pending-actions { display: flex; gap: 20px; flex-shrink: 0; }
     .pending-item button {
       background: none; border: none; padding: 0; cursor: pointer;
       font-size: 14px; color: var(--fg-strong); text-decoration: underline;
@@ -207,7 +208,7 @@
       color: var(--fg-muted); cursor: pointer;
       transition: background-color .2s, color .2s;
     }
-    .copy-btn:hover { background: var(--fg-10); color: var(--fg-strong); }
+    .copy-btn:hover { background: var(--surface); color: var(--fg-strong); }
     .copy-btn .ico { width: 15px; height: 15px; }
     .copy-btn .ico-check { display: none; }
     .copy-btn.copied { color: var(--ok); }
@@ -241,7 +242,8 @@
 
     /* 錯誤 */
     #err {
-      margin-top: 16px; padding: 10px 12px; border-radius: 10px;
+      width: calc(100vw - 80px);   /* 與摘要同寬，刻意寬於 .stage */
+      margin-top: 16px; padding: 20px; border-radius: 10px;
       background: var(--danger-bg); color: var(--danger);
       font-size: 13px; text-align: center; white-space: pre-wrap;
     }

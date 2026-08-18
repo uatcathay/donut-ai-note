@@ -268,7 +268,8 @@ async function refreshPending() {
 
     const label = document.createElement('span');
     label.className = 'pending-label';
-    label.textContent = `${item.label}　分析失敗，再試一次　${fmtMB(item.sizeBytes)}`;
+    // 不寫「再試一次」——右邊就有重試按鈕，重複說一次只是佔位置
+    label.textContent = `${item.label} / ${fmtMB(item.sizeBytes)} / 分析失敗`;
     row.append(label);
 
     const actions = document.createElement('div');
