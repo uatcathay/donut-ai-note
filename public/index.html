@@ -252,8 +252,6 @@
       font-size: 13px; text-align: center; white-space: pre-wrap;
     }
     #btn-retry { margin-top: 40px; }
-    /* ↻ 不在 Azeret Mono 的字符集內，會掉到備援字型而顯得偏小，放大補回來 */
-    .retry-ico { font-size: 1.4em; line-height: 1; vertical-align: -.12em; }
   </style>
 </head>
 <body>
@@ -310,7 +308,7 @@
     </section>
 
     <div id="err" class="hidden" role="alert"></div>
-    <button id="btn-retry" class="linkbtn hidden"><span class="retry-ico" aria-hidden="true">↻</span> 用同一段錄音重試</button>
+    <button id="btn-retry" class="linkbtn hidden">再試一次</button>
 
     <!-- 分析失敗的錄音留在這裡等你有空再處理，不必當場決定重試或放棄 -->
     <section id="pending" class="pending hidden" aria-label="待分析的錄音"></section>
