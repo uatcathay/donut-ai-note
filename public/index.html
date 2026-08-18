@@ -42,7 +42,7 @@
     /* 內容靠上對齊：視窗拉高時版面不得跟著往下飄。
        padding-top 取 70px＝(720 − 580) / 2，讓預設的 480×720 視窗維持原本垂直置中的視覺位置。 */
     body {
-      margin: 0; min-height: 100vh; padding: 70px 24px 24px;
+      margin: 0; min-height: 100vh; padding: 70px 24px 40px;   /* 下緣 40：捲到底時待辦區不貼著視窗邊 */
       display: flex; align-items: flex-start; justify-content: center;
       background: var(--bg); color: var(--fg);
       font-family: 'Azeret Mono', 'Noto Sans TC', -apple-system, "PingFang TC", sans-serif;
