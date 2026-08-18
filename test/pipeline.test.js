@@ -30,6 +30,43 @@ test('processMeeting 分析前先把錄音落地，成功後才刪掉', async ()
   ]);
 });
 
+test('重試既有錄音時不再存一份，成功後刪掉的是原檔', async () => {
+  const calls = [];
+  const deps = baseDeps({
+    saveRecording: async () => { calls.push('save'); return '/tmp/不該被呼叫.webm'; },
+    discardRecording: async (p) => { calls.push(`discard:${p}`); },
+  });
+  await processMeeting(
+    {
+      audioBuffer: Buffer.from('x'),
+      mimeType: 'audio/webm',
+      userTitle: '週會',
+      recordingPath: '/tmp/rec/錄音_2026-08-18_1419_週會.webm',
+    },
+    deps);
+  assert.deepEqual(calls, ['discard:/tmp/rec/錄音_2026-08-18_1419_週會.webm'],
+    '重試不該再存一份，否則失敗時清單會出現兩筆');
+});
+
+test('重試既有錄音再次失敗時，原檔要留著讓使用者能再試', async () => {
+  let discarded = false;
+  const deps = baseDeps({
+    analyze: async () => { throw new AppError('analyze', 'Gemini 忙碌'); },
+    discardRecording: async () => { discarded = true; },
+  });
+  await assert.rejects(
+    () => processMeeting(
+      {
+        audioBuffer: Buffer.from('x'),
+        mimeType: 'audio/webm',
+        userTitle: '週會',
+        recordingPath: '/tmp/rec/錄音_2026-08-18_1419_週會.webm',
+      },
+      deps),
+    (e) => e.stage === 'analyze');
+  assert.equal(discarded, false);
+});
+
 test('processMeeting 分析失敗時保留錄音，並在錯誤訊息裡告知檔案還在', async () => {
   let discarded = false;
   const deps = baseDeps({

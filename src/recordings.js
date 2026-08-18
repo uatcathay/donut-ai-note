@@ -1,4 +1,4 @@
-import { writeFile, unlink, mkdir } from 'node:fs/promises';
+import { writeFile, unlink, mkdir, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,6 +22,48 @@ export async function saveRecording(buffer, name, dir = RECORDINGS_DIR) {
   const filePath = path.join(dir, name);
   await writeFile(filePath, buffer);
   return filePath;
+}
+
+// 檔名就是清單的資料來源——分析失敗留下的檔案本身即待辦項目，不必另外存狀態。
+const NAME_PATTERN = /^錄音_(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})_(.+)\.[A-Za-z0-9]+$/;
+
+export function parseRecordingName(name) {
+  const m = NAME_PATTERN.exec(name);
+  if (!m) return null;
+  const [, y, mo, d, hh, mm, rawTitle] = m;
+  const savedAt = `${y}${mo}${d} ${hh}:${mm}`;
+  const title = rawTitle === '未命名' ? '' : rawTitle;
+  return {
+    id: name,
+    title,
+    savedAt,
+    // 有標題仍附上時間：同一天錄兩場同名會議時，光看標題分不出是哪一場
+    label: title ? `${title}（${savedAt}）` : savedAt,
+  };
+}
+
+export async function listRecordings(dir = RECORDINGS_DIR) {
+  let names;
+  try {
+    names = await readdir(dir);
+  } catch {
+    return [];   // 目錄還沒建立就等於沒有待辦
+  }
+  const items = [];
+  for (const name of names) {
+    const parsed = parseRecordingName(name);
+    if (!parsed) continue;   // .DS_Store 之類的雜檔不該出現在待辦清單
+    const { size } = await stat(path.join(dir, name));
+    items.push({ ...parsed, sizeBytes: size });
+  }
+  return items.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+}
+
+// id 來自前端，必須當成不可信輸入：只接受合法檔名，且解析後必須仍在目錄內。
+export function resolveRecordingPath(id, dir = RECORDINGS_DIR) {
+  if (!parseRecordingName(id)) return null;
+  const full = path.resolve(dir, id);
+  return full.startsWith(path.resolve(dir) + path.sep) ? full : null;
 }
 
 export async function discardRecording(filePath) {

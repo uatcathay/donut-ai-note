@@ -67,6 +67,63 @@ test('POST /api/process 無音檔回 400 upload', async () => {
   server.close();
 });
 
+test('GET /api/pending 列出待重試的錄音', async (t) => {
+  const app = createApp({
+    processMeeting: async () => ({}),
+    listRecordings: async () => [{ id: 'a.webm', label: '20260818 14:19', sizeBytes: 42 }],
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(`http://localhost:${port}/api/pending`);
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).items[0].label, '20260818 14:19');
+});
+
+test('分析進行中時擋下重試——同時跑兩個會搶進度顯示，也讓 503 更容易發生', async (t) => {
+  const app = createApp({
+    processMeeting: async () => { throw new Error('不該被呼叫'); },
+    isAnalyzing: () => true,
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(
+    `http://localhost:${port}/api/pending/${encodeURIComponent('錄音_2026-08-18_1419_週會.webm')}/retry`,
+    { method: 'POST' });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.equal(body.ok, false);
+  assert.match(body.message, /分析進行中/);
+});
+
+test('重試不存在或不合法的 id 回 404，不讓 id 指到目錄外', async (t) => {
+  const app = createApp({ processMeeting: async () => ({}), isAnalyzing: () => false });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(
+    `http://localhost:${port}/api/pending/${encodeURIComponent('../../etc/passwd')}/retry`,
+    { method: 'POST' });
+  assert.equal(res.status, 404);
+});
+
+test('DELETE /api/pending/:id 丟掉不想再分析的錄音', async (t) => {
+  let deleted = null;
+  const app = createApp({
+    processMeeting: async () => ({}),
+    discardRecording: async (p) => { deleted = p; },
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(
+    `http://localhost:${port}/api/pending/${encodeURIComponent('錄音_2026-08-18_1419_週會.webm')}`,
+    { method: 'DELETE' });
+  assert.equal(res.status, 200);
+  assert.match(deleted, /錄音_2026-08-18_1419_週會\.webm$/);
+});
+
 test('GET /api/progress 讓前端問得到分析進度', async (t) => {
   const app = createApp({ processMeeting: async () => ({}) });
   const server = app.listen(0);

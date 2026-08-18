@@ -2,9 +2,13 @@ import express from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { processMeeting } from './pipeline.js';
 import { getProgress } from './progress.js';
+import {
+  listRecordings, discardRecording, resolveRecordingPath, parseRecordingName,
+} from './recordings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -22,11 +26,52 @@ export function checkConfig(env) {
 
 export function createApp(deps = {}) {
   const run = deps.processMeeting || processMeeting;
+  const list = deps.listRecordings || listRecordings;
+  const discard = deps.discardRecording || discardRecording;
+  const resolvePath = deps.resolveRecordingPath || resolveRecordingPath;
+  // 同時間只跑一個分析：兩個分析會搶同一份進度狀態，也等於自己加倍 503 的機率
+  const isAnalyzing = deps.isAnalyzing || (() => getProgress().active);
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
   app.use(express.static(PUBLIC_DIR));
   // 分析可能跑上好幾分鐘。前端在等待期間輪詢這裡，才能把「重試中」與「已經死了」分開。
   app.get('/api/progress', (_req, res) => res.json(getProgress()));
+
+  // 分析失敗留下的錄音就是待辦清單本身——不必另外存狀態，讀目錄即可，
+  // 而且關掉視窗、關機都還在，這正是「晚點有空再分析」需要的。
+  app.get('/api/pending', async (_req, res) => {
+    res.json({ items: await list() });
+  });
+
+  app.post('/api/pending/:id/retry', async (req, res) => {
+    if (isAnalyzing()) {
+      return res.status(409).json({ ok: false, message: '分析進行中，請等目前的分析完成再重試。' });
+    }
+    const filePath = resolvePath(req.params.id);
+    if (!filePath) return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
+    try {
+      const audioBuffer = await readFile(filePath);
+      const parsed = parseRecordingName(req.params.id);
+      const result = await run({
+        audioBuffer,
+        mimeType: `audio/${path.extname(filePath).slice(1)}`,
+        userTitle: parsed?.title || '',
+        recordingPath: filePath,   // 重用既有檔案，避免重試失敗時長出第二筆待辦
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e?.code === 'ENOENT') return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
+      const stage = e.stage || 'unknown';
+      res.status(stage === 'unknown' ? 500 : 400).json({ ok: false, stage, message: e.message });
+    }
+  });
+
+  app.delete('/api/pending/:id', async (req, res) => {
+    const filePath = resolvePath(req.params.id);
+    if (!filePath) return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
+    await discard(filePath);
+    res.json({ ok: true });
+  });
   app.post('/api/process', upload.single('audio'), async (req, res) => {
     try {
       if (!req.file) {

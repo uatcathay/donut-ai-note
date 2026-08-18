@@ -236,6 +236,71 @@ function startProgressPolling() {
   progressTimer = setInterval(tick, 2000);
 }
 
+// 分析失敗的錄音不會消失，它們留在伺服器上等你有空。當場沒空重試就先錄下一場，
+// 這份清單關掉視窗、關機都還在。
+const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+
+async function refreshPending() {
+  const box = $('pending');
+  let items = [];
+  try {
+    items = (await (await fetch('/api/pending')).json()).items || [];
+  } catch { /* 待辦清單拿不到不該影響錄音 */ }
+  box.classList.toggle('hidden', items.length === 0);
+  if (items.length === 0) { box.textContent = ''; return; }
+
+  box.textContent = '';
+  const title = document.createElement('div');
+  title.className = 'pending-title';
+  title.textContent = `待分析（${items.length}）`;
+  box.append(title);
+
+  for (const item of items) {
+    const row = document.createElement('div');
+    row.className = 'pending-item';
+
+    const label = document.createElement('span');
+    label.className = 'pending-label';
+    label.textContent = `${item.label}　分析失敗，再試一次　${fmtMB(item.sizeBytes)}`;
+    row.append(label);
+
+    const retry = document.createElement('button');
+    retry.textContent = '重試';
+    retry.onclick = () => retryPending(item, retry);
+    row.append(retry);
+
+    const del = document.createElement('button');
+    del.textContent = '刪除';
+    del.onclick = async () => {
+      await fetch(`/api/pending/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+      refreshPending();
+    };
+    row.append(del);
+
+    box.append(row);
+  }
+}
+
+async function retryPending(item, button) {
+  button.disabled = true;
+  clearError();
+  show('processing');
+  startProgressPolling();
+  try {
+    const res = await fetch(`/api/pending/${encodeURIComponent(item.id)}/retry`, { method: 'POST' });
+    const body = await res.json();
+    if (!body.ok) throw new Error(body.message || '處理失敗');
+    renderDone(body);
+  } catch (e) {
+    show('idle');
+    showError(`處理失敗：${e.message}`, false);
+  } finally {
+    stopProgressPolling();
+    button.disabled = false;
+    refreshPending();
+  }
+}
+
 async function sendForProcessing() {
   show('processing');
   startProgressPolling();
@@ -251,6 +316,7 @@ async function sendForProcessing() {
     showError(`處理失敗：${e.message}`, true);
   } finally {
     stopProgressPolling();
+    refreshPending();
   }
 }
 
@@ -311,3 +377,4 @@ $('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value =
 $('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
 show('idle');
+refreshPending();   // 開啟視窗就看得到還有哪些錄音沒分析
