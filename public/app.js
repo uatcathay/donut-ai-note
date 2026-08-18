@@ -247,12 +247,17 @@ function startProgressPolling() {
 // 這份清單關掉視窗、關機都還在。
 const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 
+// 正在重試的錄音先從清單移除，否則它留在原地、看起來像沒反應。
+// 失敗的話伺服器那份檔案還在，下次刷新就會自己回來。
+const retryingIds = new Set();
+
 async function refreshPending() {
   const box = $('pending');
   let items = [];
   try {
     items = (await (await fetch('/api/pending')).json()).items || [];
   } catch { /* 待辦清單拿不到不該影響錄音 */ }
+  items = items.filter((i) => !retryingIds.has(i.id));
   box.classList.toggle('hidden', items.length === 0);
   if (items.length === 0) { box.textContent = ''; return; }
 
@@ -277,7 +282,7 @@ async function refreshPending() {
 
     const retry = document.createElement('button');
     retry.textContent = '重試';
-    retry.onclick = () => retryPending(item, retry);
+    retry.onclick = () => retryPending(item);
     actions.append(retry);
 
     const del = document.createElement('button');
@@ -293,8 +298,9 @@ async function refreshPending() {
   }
 }
 
-async function retryPending(item, button) {
-  button.disabled = true;
+async function retryPending(item) {
+  retryingIds.add(item.id);
+  refreshPending();   // 立刻讓該筆消失，使用者才知道重試已經開始
   clearError();
   show('processing');
   startProgressPolling();
@@ -307,9 +313,9 @@ async function retryPending(item, button) {
     show('idle');
     showError(`處理失敗：${e.message}`, false);
   } finally {
+    retryingIds.delete(item.id);
     stopProgressPolling();
-    button.disabled = false;
-    refreshPending();
+    refreshPending();   // 仍然失敗的話，伺服器上的檔案還在，這筆會重新出現
   }
 }
 
