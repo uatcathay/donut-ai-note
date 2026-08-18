@@ -1,5 +1,6 @@
 import { AppError } from '../errors.js';
 import { startAnalysis, setStage, noteRetry, endAnalysis } from '../progress.js';
+import { log as writeLog } from '../log.js';
 
 // gemini-2.5-flash 已對新帳號關閉；用 flash-latest 別名指向當前穩定的免費 flash 模型
 const MODEL = 'gemini-flash-latest';
@@ -110,7 +111,7 @@ export async function withRetry(attempt, opts = {}) {
   const delays = opts.delays || RETRY_DELAYS_MS;
   const timeoutRetries = opts.timeoutRetries ?? TIMEOUT_RETRIES;
   const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
-  const log = opts.log || console.log;
+  const log = opts.log || writeLog;
   const label = opts.label || '';
   // 重試必須讓前端看得見，否則使用者只看到轉圈，分不出「還在努力」與「已經死了」
   const onRetry = opts.onRetry || (() => {});
@@ -180,7 +181,7 @@ async function callGemini(prompt, audioBuffer, mimeType) {
   let tReady = t0;
   let polls = 0;
 
-  const report = (tag) => console.log(
+  const report = (tag) => writeLog(
     formatTimings({
       uploadMs: tUploaded - t0,
       waitMs: tReady - tUploaded,

@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { processMeeting } from './pipeline.js';
 import { getProgress } from './progress.js';
+import { log, warn } from './log.js';
 import {
   listRecordings, discardRecording, resolveRecordingPath, parseRecordingName,
 } from './recordings.js';
@@ -102,12 +103,12 @@ export function start() {
   // Node 不會自動載入 .env，這裡在正式啟動時讀入專案根目錄的 .env
   const envPath = path.join(__dirname, '..', '.env');
   if (existsSync(envPath)) process.loadEnvFile(envPath);
-  for (const w of checkConfig(process.env)) console.warn('[設定提醒] ' + w);
+  for (const w of checkConfig(process.env)) warn('[設定提醒] ' + w);
   const app = createApp();
   const port = process.env.PORT || 3000;
   // 伺服器改為登入常駐後，曝露時間從「App 視窗開著的幾分鐘」變成「開機後無限期」，
   // 且無任何身分驗證；綁定 loopback 避免同網段的人打到 /api/process 盜用 Gemini 額度、寫入使用者的 Notion。
-  app.listen(port, '127.0.0.1', () => console.log(`會議記錄工具運作中： http://localhost:${port}`));
+  app.listen(port, '127.0.0.1', () => log(`會議記錄工具運作中： http://localhost:${port}`));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) start();
