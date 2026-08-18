@@ -1,10 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { processMeeting } from '../src/pipeline.js';
+import { processMeeting, validateAnalysis } from '../src/pipeline.js';
 
 const baseDeps = (overrides = {}) => ({
-  analyze: async () => ({ suggestedTitle: 'AI 標題', summary: '摘要', keyPoints: ['點一'], transcript: '逐字' }),
+  analyze: async () => ({
+    suggestedTitle: 'AI 標題',
+    topics: [{ title: '議題一', points: ['點一'] }],
+    nextSteps: ['待辦一'],
+    transcript: '逐字',
+  }),
   writeOutput: async (result) => ({ type: 'markdown', filePath: `/tmp/${result.title}.md` }),
   now: () => new Date(2026, 6, 31, 9, 5),
   // 注入假的存檔／刪檔，測試不該碰真實磁碟
@@ -17,7 +22,10 @@ test('processMeeting 分析前先把錄音落地，成功後才刪掉', async ()
   const calls = [];
   const deps = baseDeps({
     saveRecording: async (buf, name) => { calls.push(`save:${name}`); return `/tmp/${name}`; },
-    analyze: async () => { calls.push('analyze'); return { suggestedTitle: 'A', summary: 's', keyPoints: ['k'], transcript: 't' }; },
+    analyze: async () => {
+      calls.push('analyze');
+      return { suggestedTitle: 'A', topics: [{ title: 'T', points: ['k'] }], nextSteps: [], transcript: 't' };
+    },
     writeOutput: async () => { calls.push('write'); return { type: 'markdown', filePath: '/tmp/a.md' }; },
     discardRecording: async (p) => { calls.push(`discard:${p}`); },
   });
@@ -90,8 +98,8 @@ test('processMeeting 正常流程用使用者標題', async () => {
     { audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '週會' },
     baseDeps());
   assert.equal(out.title, '週會');
-  assert.equal(out.summary, '摘要');
-  assert.deepEqual(out.keyPoints, ['點一']);
+  assert.deepEqual(out.topics, [{ title: '議題一', points: ['點一'] }]);
+  assert.deepEqual(out.nextSteps, ['待辦一']);
   assert.equal(out.destination.type, 'markdown');
 });
 
@@ -103,8 +111,31 @@ test('processMeeting 無使用者標題時用 AI 建議標題', async () => {
 });
 
 test('processMeeting 分析結果不合法時拋 analyze 錯', async () => {
-  const deps = baseDeps({ analyze: async () => ({ summary: '', keyPoints: [], transcript: '' }) });
+  const deps = baseDeps({ analyze: async () => ({ topics: [], nextSteps: [], transcript: '' }) });
   await assert.rejects(
     () => processMeeting({ audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '' }, deps),
     (e) => e instanceof AppError && e.stage === 'analyze');
+});
+
+test('validateAnalysis：沒有任何議題就是壞資料，不能靜默寫出空白記錄', () => {
+  assert.throws(
+    () => validateAnalysis({ topics: [], nextSteps: [], transcript: 't' }),
+    (e) => e instanceof AppError && /議題/.test(e.message));
+});
+
+test('validateAnalysis：議題缺標題或內容都要擋下', () => {
+  const t = 't';
+  assert.throws(() => validateAnalysis({ topics: [{ title: '', points: ['a'] }], nextSteps: [], transcript: t }), AppError);
+  assert.throws(() => validateAnalysis({ topics: [{ title: 'T', points: [] }], nextSteps: [], transcript: t }), AppError);
+  assert.throws(() => validateAnalysis({ topics: [{ title: 'T', points: [''] }], nextSteps: [], transcript: t }), AppError);
+});
+
+test('validateAnalysis：沒有待辦事項是正常的，不該被當成錯誤', () => {
+  validateAnalysis({ topics: [{ title: 'T', points: ['a'] }], nextSteps: [], transcript: 't' });
+});
+
+test('validateAnalysis：待辦事項含空項目要擋下', () => {
+  assert.throws(
+    () => validateAnalysis({ topics: [{ title: 'T', points: ['a'] }], nextSteps: [''], transcript: 't' }),
+    AppError);
 });

@@ -37,6 +37,24 @@ test('buildPrompt 不鎖死摘要句數，改為依會議內容伸縮', () => {
   assert.match(p, /該長就長/);
 });
 
+test('buildPrompt 要求依議題分段，並另外產出待辦事項', () => {
+  const p = buildPrompt();
+  assert.match(p, /topics/);
+  assert.match(p, /nextSteps/);
+  assert.doesNotMatch(p, /"summary"/, '舊的單段摘要欄位已由 topics 取代');
+  assert.doesNotMatch(p, /"keyPoints"/);
+});
+
+test('buildPrompt 要求略過寒暄與離題閒聊', () => {
+  assert.match(buildPrompt(), /寒暄|閒聊/);
+});
+
+test('buildPrompt 要求待辦沒明講負責人時就不要提負責人', () => {
+  const p = buildPrompt();
+  assert.match(p, /負責人/);
+  assert.match(p, /不要(自行)?臆測|沒有明確|未指明/);
+});
+
 // Gemini 免費版尖峰時段會回 503 UNAVAILABLE，這是對方的容量問題、過幾分鐘就好。
 // 實測一段 15 分鐘的錄音就這樣失敗過，而使用者只能自己一直按重試。
 const err503 = () => new Error('got status: 503 {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}');
@@ -134,12 +152,12 @@ test('describeFailure：429 要說是用量上限，而不是叫人一直重試'
 });
 
 test('parseGeminiJson 解析純 JSON', () => {
-  const obj = parseGeminiJson('{"summary":"s","keyPoints":["a"],"transcript":"t","suggestedTitle":"x"}');
-  assert.equal(obj.summary, 's');
+  const obj = parseGeminiJson('{"topics":[{"title":"T","points":["a"]}],"nextSteps":[],"transcript":"t","suggestedTitle":"x"}');
+  assert.equal(obj.topics[0].title, 'T');
 });
 
 test('parseGeminiJson 去除 ```json 圍欄', () => {
-  const raw = '```json\n{"summary":"s","keyPoints":["a"],"transcript":"t","suggestedTitle":"x"}\n```';
+  const raw = '```json\n{"topics":[{"title":"T","points":["a"]}],"nextSteps":[],"transcript":"t","suggestedTitle":"x"}\n```';
   assert.equal(parseGeminiJson(raw).transcript, 't');
 });
 
@@ -148,10 +166,10 @@ test('parseGeminiJson 非 JSON 拋錯', () => {
 });
 
 test('analyze 注入 generate 回傳解析結果', async () => {
-  const fakeGenerate = async () => '{"summary":"開會摘要","keyPoints":["點一"],"transcript":"逐字","suggestedTitle":"週會"}';
+  const fakeGenerate = async () => '{"topics":[{"title":"議題","points":["點一"]}],"nextSteps":[],"transcript":"逐字","suggestedTitle":"週會"}';
   const out = await analyze(Buffer.from('x'), 'audio/webm', { generate: fakeGenerate });
   assert.equal(out.suggestedTitle, '週會');
-  assert.equal(out.keyPoints[0], '點一');
+  assert.equal(out.topics[0].points[0], '點一');
 });
 
 test('formatTimings 標出三個階段的秒數與佔比，用來找出瓶頸', () => {

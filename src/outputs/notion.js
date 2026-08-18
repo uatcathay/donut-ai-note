@@ -4,15 +4,21 @@ import { AppError } from '../errors.js';
 const richText = (content) => [{ type: 'text', text: { content } }];
 const paragraph = (content) => ({ object: 'block', type: 'paragraph', paragraph: { rich_text: richText(content) } });
 const heading2 = (content) => ({ object: 'block', type: 'heading_2', heading_2: { rich_text: richText(content) } });
+const heading3 = (content) => ({ object: 'block', type: 'heading_3', heading_3: { rich_text: richText(content) } });
 const bullet = (content) => ({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: richText(content) } });
+// Notion 原生的核取方塊：待辦在 Notion 裡是真的可以打勾的，不只是符號
+const todo = (content) => ({ object: 'block', type: 'to_do', to_do: { rich_text: richText(content), checked: false } });
 
 export function buildBlocks(result) {
-  return [
-    heading2('摘要'),
-    paragraph(result.summary),
-    heading2('重點'),
-    ...result.keyPoints.map(bullet),
-  ];
+  const blocks = [heading2('📝 Mins')];
+  for (const topic of result.topics) {
+    blocks.push(heading3(topic.title), ...topic.points.map(bullet));
+  }
+  // 沒有待辦是常態，空標題只會讓頁面看起來像漏了東西
+  if (result.nextSteps.length > 0) {
+    blocks.push(heading2("◻️ What's next?"), ...result.nextSteps.map(todo));
+  }
+  return blocks;
 }
 
 export function buildTranscriptBlocks(transcript, maxLen = 1900) {

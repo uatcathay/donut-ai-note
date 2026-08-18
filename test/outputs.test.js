@@ -5,7 +5,7 @@ import os from 'node:os';
 import { rm, mkdtemp, readFile } from 'node:fs/promises';
 import { chooseOutput, writeOutput } from '../src/outputs/index.js';
 
-const result = { title: 'T', summary: 's', keyPoints: ['a'], transcript: 't' };
+const result = { title: 'T', topics: [{ title: 'X', points: ['a'] }], nextSteps: [], transcript: 't' };
 const stamp = { date: '2026-07-31', time: '0905' };
 
 test('chooseOutput：兩者皆設 → notion', () => {

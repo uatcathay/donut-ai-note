@@ -19,10 +19,17 @@ export function decideTitle(userTitle, suggestedTitle, dateStr) {
 
 export function validateAnalysis(a) {
   const bad = (m) => { throw new AppError('analyze', m); };
+  const nonEmptyStrings = (arr) => arr.every((s) => typeof s === 'string' && s.trim());
   if (!a || typeof a !== 'object') bad('分析結果格式錯誤');
-  if (typeof a.summary !== 'string' || !a.summary.trim()) bad('摘要缺漏');
-  if (!Array.isArray(a.keyPoints) || a.keyPoints.length === 0) bad('重點缺漏');
-  if (a.keyPoints.some((p) => typeof p !== 'string' || !p.trim())) bad('重點含空項目');
+  if (!Array.isArray(a.topics) || a.topics.length === 0) bad('議題缺漏');
+  for (const t of a.topics) {
+    if (!t || typeof t.title !== 'string' || !t.title.trim()) bad('議題缺標題');
+    if (!Array.isArray(t.points) || t.points.length === 0) bad('議題缺內容');
+    if (!nonEmptyStrings(t.points)) bad('議題內容含空項目');
+  }
+  // 沒有待辦是常態（純同步、純討論的會議），空陣列不是錯誤；有內容才檢查品質
+  if (!Array.isArray(a.nextSteps)) bad('待辦事項格式錯誤');
+  if (!nonEmptyStrings(a.nextSteps)) bad('待辦事項含空項目');
   if (typeof a.transcript !== 'string' || !a.transcript.trim()) bad('逐字稿缺漏');
 }
 
@@ -56,8 +63,8 @@ export async function processMeeting(input, deps = {}) {
     const title = decideTitle(input.userTitle, analysis.suggestedTitle, stamp.date);
     result = {
       title,
-      summary: analysis.summary,
-      keyPoints: analysis.keyPoints,
+      topics: analysis.topics,
+      nextSteps: analysis.nextSteps,
       transcript: analysis.transcript,
     };
     destination = await writeFn(result, stamp);

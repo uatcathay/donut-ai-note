@@ -208,6 +208,18 @@
     .copy-btn.copied .ico-copy { display: none; }
     .copy-btn.copied .ico-check { display: block; }
     #preview ul { margin: 8px 0 0; padding-left: 20px; }
+    /* 兩大區的標題：份量要明顯大於議題標題，否則四層文字看起來一樣重 */
+    .pv-section { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
+    .pv-section + .pv-topic { margin-top: 0; }
+    #preview .pv-section:not(:first-child) { margin-top: 22px; }
+    .pv-topic { margin: 16px 0 0; font-size: 13px; font-weight: 600; }
+    /* 待辦用方框呈現。App 這邊是回顧用的預覽，要打勾請到 Notion */
+    #preview ul.pv-todo { list-style: none; padding-left: 2px; }
+    #preview ul.pv-todo li { position: relative; padding-left: 22px; margin-bottom: 4px; }
+    #preview ul.pv-todo li::before {
+      content: ''; position: absolute; left: 0; top: 3px;
+      width: 12px; height: 12px; border: 1.5px solid var(--fg-30); border-radius: 3px;
+    }
 
     /* 確認對話框（原生 <dialog>：外觀自訂，焦點鎖定與 Esc 關閉由瀏覽器提供） */
     .dialog {

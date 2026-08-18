@@ -3,14 +3,24 @@ import path from 'node:path';
 import os from 'node:os';
 
 export function buildMarkdown(result, dateStr) {
-  const points = result.keyPoints.map((p) => `- ${p}`).join('\n');
-  return [
+  const lines = [
     `# ${result.title}`, '',
     `📅 ${dateStr}`, '',
-    '## 摘要', '', result.summary, '',
-    '## 重點', '', points, '',
-    '## 完整逐字稿', '', result.transcript, '',
-  ].join('\n');
+    '## 📝 Mins', '',
+  ];
+  for (const topic of result.topics) {
+    lines.push(`### ${topic.title}`, '');
+    for (const point of topic.points) lines.push(`- ${point}`);
+    lines.push('');
+  }
+  // 沒有待辦是常態，空標題只會讓文件看起來像漏了東西
+  if (result.nextSteps.length > 0) {
+    lines.push("## ◻️ What's next?", '');
+    for (const step of result.nextSteps) lines.push(`- [ ] ${step}`);
+    lines.push('');
+  }
+  lines.push('## 完整逐字稿', '', result.transcript, '');
+  return lines.join('\n');
 }
 
 export function buildFilename(title, stamp) {

@@ -4,20 +4,34 @@ import { buildBlocks, buildTranscriptBlocks, chunk, writeNotion } from '../src/o
 
 const result = {
   title: '產品週會',
-  summary: '討論了 A。',
-  keyPoints: ['決定做 A', '下週追 B'],
+  topics: [
+    { title: '排版問題', points: ['文字被裁切', '間距過大'] },
+    { title: '後續測試', points: ['依標準流程重測'] },
+  ],
+  nextSteps: ['在下週三前重新測試問題頁面'],
   transcript: '第一段。\n第二段。',
 };
 
-test('buildBlocks 結構正確（日期改為 Date 欄，不再放進內文）', () => {
+test('buildBlocks：議題用 heading_3、待辦用可勾的 to_do', () => {
   const blocks = buildBlocks(result);
-  assert.equal(blocks[0].type, 'heading_2');
-  assert.equal(blocks[0].heading_2.rich_text[0].text.content, '摘要');
-  assert.equal(blocks[1].paragraph.rich_text[0].text.content, '討論了 A。');
-  assert.equal(blocks[2].heading_2.rich_text[0].text.content, '重點');
-  assert.equal(blocks[3].type, 'bulleted_list_item');
-  assert.equal(blocks[3].bulleted_list_item.rich_text[0].text.content, '決定做 A');
-  assert.equal(blocks[4].bulleted_list_item.rich_text[0].text.content, '下週追 B');
+  const types = blocks.map((b) => b.type);
+  assert.deepEqual(types, [
+    'heading_2', 'heading_3', 'bulleted_list_item', 'bulleted_list_item',
+    'heading_3', 'bulleted_list_item',
+    'heading_2', 'to_do',
+  ]);
+  assert.equal(blocks[0].heading_2.rich_text[0].text.content, '📝 Mins');
+  assert.equal(blocks[1].heading_3.rich_text[0].text.content, '排版問題');
+  assert.equal(blocks[2].bulleted_list_item.rich_text[0].text.content, '文字被裁切');
+  assert.equal(blocks[6].heading_2.rich_text[0].text.content, "◻️ What's next?");
+  assert.equal(blocks[7].to_do.rich_text[0].text.content, '在下週三前重新測試問題頁面');
+  assert.equal(blocks[7].to_do.checked, false, '待辦寫進去時應為未勾選');
+});
+
+test('buildBlocks：沒有待辦時不產生 What\'s next 區塊', () => {
+  const blocks = buildBlocks({ ...result, nextSteps: [] });
+  assert.equal(blocks.filter((b) => b.type === 'to_do').length, 0);
+  assert.equal(blocks.filter((b) => b.type === 'heading_2').length, 1);
 });
 
 test('buildTranscriptBlocks 依段落切塊', () => {

@@ -7,8 +7,11 @@ import { buildMarkdown, buildFilename, writeMarkdown } from '../src/outputs/mark
 
 const result = {
   title: '產品週會',
-  summary: '討論了 A 與 B。',
-  keyPoints: ['決定做 A', '下週追 B'],
+  topics: [
+    { title: '排版問題', points: ['文字被裁切', '間距過大'] },
+    { title: '後續測試', points: ['依標準流程重測'] },
+  ],
+  nextSteps: ['在下週三前重新測試問題頁面'],
   transcript: '完整逐字內容',
 };
 
@@ -16,11 +19,12 @@ test('buildMarkdown 含各區塊', () => {
   const md = buildMarkdown(result, '2026-07-31');
   assert.match(md, /# 產品週會/);
   assert.match(md, /📅 2026-07-31/);
-  assert.match(md, /## 摘要/);
-  assert.match(md, /討論了 A 與 B。/);
-  assert.match(md, /## 重點/);
-  assert.match(md, /- 決定做 A/);
-  assert.match(md, /- 下週追 B/);
+  assert.match(md, /## 📝 Mins/);
+  assert.match(md, /### 排版問題/);
+  assert.match(md, /- 文字被裁切/);
+  assert.match(md, /### 後續測試/);
+  assert.match(md, /## ◻️ What's next\?/);
+  assert.match(md, /- \[ \] 在下週三前重新測試問題頁面/);
   assert.match(md, /## 完整逐字稿/);
   assert.match(md, /完整逐字內容/);
 });
@@ -37,4 +41,10 @@ test('writeMarkdown 實際寫檔', async () => {
   const content = await readFile(out.filePath, 'utf8');
   assert.match(content, /# 產品週會/);
   await rm(dir, { recursive: true, force: true });
+});
+
+test('buildMarkdown 沒有待辦時整區省略，不留空標題', () => {
+  const md = buildMarkdown({ ...result, nextSteps: [] }, '2026-07-31');
+  assert.doesNotMatch(md, /What's next/);
+  assert.match(md, /## 📝 Mins/);
 });

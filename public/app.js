@@ -338,8 +338,16 @@ function renderDone(body) {
     link.removeAttribute('href');
     link.classList.add('is-file');
   }
-  const points = body.keyPoints.map((p) => `<li>${esc(p)}</li>`).join('');
-  $('preview').innerHTML = `<b>【摘要】</b><br>${esc(body.summary)}<br><br><b>【重點】</b><ul>${points}</ul><small>（完整逐字稿已另存）</small>`;
+  const topics = body.topics.map((t) => `
+    <h4 class="pv-topic">${esc(t.title)}</h4>
+    <ul>${t.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>`).join('');
+  // 沒有待辦是常態，空標題只會讓人以為漏了東西
+  const next = body.nextSteps.length === 0 ? '' : `
+    <h3 class="pv-section">◻️ What's next?</h3>
+    <ul class="pv-todo">${body.nextSteps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`;
+  $('preview').innerHTML = `
+    <h3 class="pv-section">📝 Mins</h3>${topics}${next}
+    <small>（完整逐字稿已另存）</small>`;
   show('done');
 }
 

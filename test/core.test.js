@@ -27,21 +27,28 @@ test('decideTitle：兩者皆空時用日期', () => {
 });
 
 test('validateAnalysis：合法通過', () => {
-  validateAnalysis({ suggestedTitle: 'x', summary: '好', keyPoints: ['a'], transcript: '逐字' });
+  validateAnalysis({
+    suggestedTitle: 'x',
+    topics: [{ title: '議題', points: ['a'] }],
+    nextSteps: [],
+    transcript: '逐字',
+  });
 });
-test('validateAnalysis：空摘要拋錯', () => {
-  assert.throws(() => validateAnalysis({ summary: ' ', keyPoints: ['a'], transcript: 't' }),
+test('validateAnalysis：沒有議題拋錯', () => {
+  assert.throws(() => validateAnalysis({ topics: [], nextSteps: [], transcript: 't' }),
     (e) => e instanceof AppError && e.stage === 'analyze');
 });
-test('validateAnalysis：空重點陣列拋錯', () => {
-  assert.throws(() => validateAnalysis({ summary: 's', keyPoints: [], transcript: 't' }),
+test('validateAnalysis：議題沒有內容拋錯', () => {
+  assert.throws(() => validateAnalysis({ topics: [{ title: 'T', points: [] }], nextSteps: [], transcript: 't' }),
     (e) => e.stage === 'analyze');
 });
-test('validateAnalysis：重點含空字串拋錯', () => {
-  assert.throws(() => validateAnalysis({ summary: 's', keyPoints: ['a', ' '], transcript: 't' }),
+test('validateAnalysis：議題內容含空字串拋錯', () => {
+  assert.throws(
+    () => validateAnalysis({ topics: [{ title: 'T', points: ['a', ' '] }], nextSteps: [], transcript: 't' }),
     (e) => e.stage === 'analyze');
 });
 test('validateAnalysis：空逐字稿拋錯', () => {
-  assert.throws(() => validateAnalysis({ summary: 's', keyPoints: ['a'], transcript: '' }),
+  assert.throws(
+    () => validateAnalysis({ topics: [{ title: 'T', points: ['a'] }], nextSteps: [], transcript: '' }),
     (e) => e.stage === 'analyze');
 });

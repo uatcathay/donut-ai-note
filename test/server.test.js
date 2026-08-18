@@ -23,7 +23,7 @@ async function postAudio(port, { title = '會議' } = {}) {
 test('POST /api/process 成功回傳結果', async () => {
   const app = createApp({
     processMeeting: async (input) => ({
-      title: input.userTitle, summary: 's', keyPoints: ['a'], transcript: 't',
+      title: input.userTitle, topics: [{ title: 'T', points: ['a'] }], nextSteps: [], transcript: 't',
       destination: { type: 'markdown', filePath: '/x.md' },
     }),
   });
