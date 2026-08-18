@@ -193,6 +193,15 @@ function stopAndAnalyze() {
   mediaRecorder.stop();
 }
 
+// fetch 連不上時瀏覽器只給「Failed to fetch」，看不出是誰的問題。
+// 這種情況幾乎都是本機伺服器在請求進行中被重啟或停掉——錄音早已落地，重試即可。
+function describeClientFailure(e) {
+  if (e instanceof TypeError && /fetch/i.test(e.message || '')) {
+    return '與本機伺服器的連線中斷（伺服器可能剛重新啟動）。錄音已保留，請再試一次。';
+  }
+  return e.message;
+}
+
 // 分析可能跑好幾分鐘，而畫面上只有一個轉圈。伺服器知道自己在上傳、在分析、
 // 還是在重試——問出來顯示給使用者看，等待才不會被誤認成當機。
 const STAGE_TEXT = { upload: '上傳音檔', analyze: '分析錄音' };
@@ -311,7 +320,7 @@ async function retryPending(item) {
     renderDone(body);
   } catch (e) {
     show('idle');
-    showError(`處理失敗：${e.message}`, false);
+    showError(`處理失敗：${describeClientFailure(e)}`, false);
   } finally {
     retryingIds.delete(item.id);
     stopProgressPolling();
@@ -331,7 +340,7 @@ async function sendForProcessing() {
     if (!body.ok) throw new Error(body.message || '處理失敗');
     renderDone(body);
   } catch (e) {
-    showError(`處理失敗：${e.message}`, true);
+    showError(`處理失敗：${describeClientFailure(e)}`, true);
   } finally {
     stopProgressPolling();
     refreshPending();
