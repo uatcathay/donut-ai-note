@@ -203,12 +203,14 @@ function formatElapsed(ms) {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+// 分三行：一行塞滿階段、耗時、重試原因與次數，掃一眼抓不到重點
 function describeProgress(p) {
-  if (!p || !p.active) return { text: '', retrying: false };
-  const base = `${STAGE_TEXT[p.stage] || p.stage}　已等 ${formatElapsed(p.elapsedMs)}`;
-  if (!p.retry) return { text: base, retrying: false };
-  const why = RETRY_TEXT[p.retry.reason] || '暫時性錯誤';
-  return { text: `${base}　${why}，第 ${p.retry.attempt}/${p.retry.total} 次重試`, retrying: true };
+  if (!p || !p.active) return { lines: [], retrying: false };
+  const lines = [`${STAGE_TEXT[p.stage] || p.stage}中（已等 ${formatElapsed(p.elapsedMs)}）`];
+  if (!p.retry) return { lines, retrying: false };
+  lines.push(RETRY_TEXT[p.retry.reason] || '暫時性錯誤');
+  lines.push(`第 ${p.retry.attempt}/${p.retry.total} 次重試`);
+  return { lines, retrying: true };
 }
 
 let progressTimer = null;
@@ -226,9 +228,14 @@ function startProgressPolling() {
   const tick = async () => {
     try {
       const p = await (await fetch('/api/progress')).json();
-      const { text, retrying } = describeProgress(p);
+      const { lines, retrying } = describeProgress(p);
       const el = $('proc-detail');
-      el.textContent = text;
+      el.textContent = '';
+      for (const line of lines) {
+        const div = document.createElement('div');
+        div.textContent = line;
+        el.append(div);
+      }
       el.classList.toggle('is-retrying', retrying);
     } catch { /* 進度查不到不該影響分析本身 */ }
   };

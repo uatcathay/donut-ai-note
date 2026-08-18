@@ -101,7 +101,7 @@
 
     /* 計時器 */
     .timer {
-      margin-bottom: 8px;
+      margin-bottom: 20px;
       font-family: 'Azeret Mono', ui-monospace, monospace;
       font-size: 14px; font-variant-numeric: tabular-nums;
       color: var(--fg-30);
@@ -110,7 +110,7 @@
 
     /* visualizer（相對參考元件等比放大 1.5 倍，錄音時更明顯） */
     .wave {
-      width: 288px; height: 24px; margin-bottom: 20px;
+      width: 288px; height: 24px; margin-bottom: 40px;
       display: flex; align-items: center; justify-content: center; gap: 3px;
     }
     .wave .bar {
@@ -124,11 +124,11 @@
     }
 
     /* 文字控制項 */
-    .hint { height: 16px; font-size: 12px; color: var(--fg-70); }
+    .hint { height: 22px; font-size: 16px; color: var(--fg-70); }
     .linkbtn {
       padding: 4px 10px; border: 0; border-radius: 6px;
       background: none; color: var(--fg-70); cursor: pointer;
-      font: inherit; font-size: 12px;
+      font: inherit; font-size: 16px;
       display: inline-block; text-decoration: none;   /* 同一套樣式也用在 <a> 上 */
     }
     .linkbtn:hover { background: var(--fg-10); }
@@ -159,7 +159,10 @@
     }
     .proc-stage { font-size: 16px; color: var(--fg-70); text-align: center; }
     /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
-    .proc-detail { margin-top: 20px; font-size: 14px; color: var(--fg-30); text-align: center; min-height: 1.4em; }
+    .proc-detail {
+      margin-top: 20px; font-size: 14px; line-height: 1.7;
+      color: var(--fg-30); text-align: center; min-height: calc(1.7em * 3);
+    }
     .proc-detail.is-retrying { color: var(--danger); }
     /* 待辦清單：刻意低調，它是提醒不是主角 */
     .pending { margin-top: 100px; width: 100%; text-align: left; }
