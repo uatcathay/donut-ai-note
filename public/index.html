@@ -12,7 +12,7 @@
       --grad-from: #F9C05C;
       --grad-to: #F52D8E;
       --fg: #1a1a1a;
-      --fg-70: rgba(26, 26, 26, .7);
+      --fg-strong: #494949;   /* 主要可點文字與圖示 */
       --fg-muted: #707070;   /* 次要文字與細邊框；改成固定灰而非半透明，深淺底上都可控 */
       --fg-10: rgba(26, 26, 26, .1);
       --preview-bg: #F5F5F5;
@@ -24,7 +24,7 @@
     @media (prefers-color-scheme: dark) {
       :root {
         --fg: #f2f2f2;
-        --fg-70: rgba(242, 242, 242, .7);
+        --fg-strong: #c8c8c8;   /* 深底上的對應灰度 */
         --fg-muted: #909090;   /* 深底上的對應灰度，與淺色模式的可讀性相當 */
         --fg-10: rgba(242, 242, 242, .1);
         /* 深色模式維持半透明淺色：直接用 #F5F5F5 會變成近白底配近白字，讀不到 */
@@ -90,7 +90,7 @@
     }
     /* 錄音中的方塊同樣要有 hover 灰底——它是「停止並分析」的觸發點，沒有回饋會看不出可點 */
     .orb:hover { background: var(--fg-10); }
-    .mic { width: 40px; height: 40px; color: var(--fg-70); }
+    .mic { width: 40px; height: 40px; color: var(--fg-strong); }
     .cube {
       width: 24px; height: 24px; border-radius: 4px;
       background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
@@ -106,7 +106,7 @@
       font-size: 14px; font-variant-numeric: tabular-nums;
       color: var(--fg-muted);
     }
-    #view-recording .timer { color: var(--fg-70); }
+    #view-recording .timer { color: var(--fg-strong); }
 
     /* visualizer（相對參考元件等比放大 1.5 倍，錄音時更明顯） */
     .wave {
@@ -126,7 +126,7 @@
     /* 文字控制項 */
     .linkbtn {
       padding: 4px 10px; border: 0; border-radius: 6px;
-      background: none; color: var(--fg-70); cursor: pointer;
+      background: none; color: var(--fg-strong); cursor: pointer;
       font: inherit; font-size: 16px;
       display: inline-block; text-decoration: none;   /* 同一套樣式也用在 <a> 上 */
     }
@@ -156,7 +156,7 @@
       0%, 100% { transform: translateY(0); opacity: .3; }
       50%      { transform: translateY(-21px); opacity: 1; }
     }
-    .proc-stage { font-size: 16px; color: var(--fg-70); text-align: center; }
+    .proc-stage { font-size: 16px; color: var(--fg-strong); text-align: center; }
     /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
     .proc-detail {
       margin-top: 20px; font-size: 14px; line-height: 1.7;
@@ -165,16 +165,16 @@
     .proc-detail.is-retrying { color: var(--danger); }
     /* 待辦清單：刻意低調，它是提醒不是主角 */
     .pending { margin-top: 100px; width: 100%; text-align: left; }
-    .pending-title { font-size: 11px; color: var(--fg-muted); margin-bottom: 6px; }
+    .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 6px; }
     .pending-item {
       display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-      font-size: 12px; color: var(--fg-muted); padding: 6px 0;
+      font-size: 14px; color: var(--fg-muted); padding: 6px 0;
     }
     .pending-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .pending-actions { display: flex; gap: 12px; }
+    .pending-actions { display: flex; gap: 12px; margin-top: 20px; }
     .pending-item button {
       background: none; border: none; padding: 0; cursor: pointer;
-      font-size: 12px; color: var(--fg-70); text-decoration: underline;
+      font-size: 14px; color: var(--fg-strong); text-decoration: underline;
     }
     .pending-item button:disabled { color: var(--fg-muted); cursor: default; text-decoration: none; }
 
@@ -204,7 +204,7 @@
       color: var(--fg-muted); cursor: pointer;
       transition: background-color .2s, color .2s;
     }
-    .copy-btn:hover { background: var(--fg-10); color: var(--fg-70); }
+    .copy-btn:hover { background: var(--fg-10); color: var(--fg-strong); }
     .copy-btn .ico { width: 15px; height: 15px; }
     .copy-btn .ico-check { display: none; }
     .copy-btn.copied { color: var(--ok); }
@@ -242,7 +242,9 @@
       background: var(--danger-bg); color: var(--danger);
       font-size: 13px; text-align: center; white-space: pre-wrap;
     }
-    #btn-retry { margin-top: 8px; }
+    #btn-retry { margin-top: 40px; }
+    /* ↻ 不在 Azeret Mono 的字符集內，會掉到備援字型而顯得偏小，放大補回來 */
+    .retry-ico { font-size: 1.4em; line-height: 1; vertical-align: -.12em; }
   </style>
 </head>
 <body>
@@ -299,7 +301,7 @@
     </section>
 
     <div id="err" class="hidden" role="alert"></div>
-    <button id="btn-retry" class="linkbtn hidden">↻ 用同一段錄音重試</button>
+    <button id="btn-retry" class="linkbtn hidden"><span class="retry-ico" aria-hidden="true">↻</span> 用同一段錄音重試</button>
 
     <!-- 分析失敗的錄音留在這裡等你有空再處理，不必當場決定重試或放棄 -->
     <section id="pending" class="pending hidden" aria-label="待分析的錄音"></section>
