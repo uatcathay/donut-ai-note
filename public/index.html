@@ -55,6 +55,13 @@
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }
     .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    /* 待辦區必須在四個頁面都停在同一條線上，否則切換頁面時它會上下跳。
+       高度取最高的完成頁：標題槽 38.2 + 間距 20 + 摘要區 600 + 間距 20 + 按鈕 29。
+       其餘頁面較矮，內容靠上對齊，位置不受影響。 */
+    .views {
+      width: 100%; min-height: calc(38.2px + 20px + 600px + 20px + 29px);
+      display: flex; flex-direction: column; align-items: center;
+    }
     .hidden { display: none !important; }
 
     /* 標題：固定單行。高度是寫死的常數，三個狀態共用同一組規格，
@@ -257,6 +264,7 @@
 </head>
 <body>
   <main class="stage">
+    <div class="views">
     <section id="view-idle" class="panel">
       <input id="title" type="text" class="title-input" maxlength="16" placeholder="會議標題（空白就讓 AI 命名）" />
       <button id="btn-start" class="orb" title="開始錄音" aria-label="開始錄音">
@@ -310,6 +318,7 @@
 
     <div id="err" class="hidden" role="alert"></div>
     <button id="btn-retry" class="linkbtn hidden"><span class="retry-ico" aria-hidden="true">↻</span> 用同一段錄音重試</button>
+    </div>
 
     <!-- 分析失敗的錄音留在這裡等你有空再處理，不必當場決定重試或放棄 -->
     <section id="pending" class="pending hidden" aria-label="待分析的錄音"></section>
