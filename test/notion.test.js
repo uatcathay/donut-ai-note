@@ -16,16 +16,17 @@ test('buildBlocks：議題用 heading_3、待辦用可勾的 to_do', () => {
   const blocks = buildBlocks(result);
   const types = blocks.map((b) => b.type);
   assert.deepEqual(types, [
+    'heading_2', 'to_do',
     'heading_2', 'heading_3', 'bulleted_list_item', 'bulleted_list_item',
     'heading_3', 'bulleted_list_item',
-    'heading_2', 'to_do',
   ]);
-  assert.equal(blocks[0].heading_2.rich_text[0].text.content, '📝 Mins');
-  assert.equal(blocks[1].heading_3.rich_text[0].text.content, '排版問題');
-  assert.equal(blocks[2].bulleted_list_item.rich_text[0].text.content, '文字被裁切');
-  assert.equal(blocks[6].heading_2.rich_text[0].text.content, "◻️ What's next?");
-  assert.equal(blocks[7].to_do.rich_text[0].text.content, '在下週三前重新測試問題頁面');
-  assert.equal(blocks[7].to_do.checked, false, '待辦寫進去時應為未勾選');
+  assert.equal(blocks[0].heading_2.rich_text[0].text.content, "◻️ What's next?",
+    '待辦排在議題之前');
+  assert.equal(blocks[1].to_do.rich_text[0].text.content, '在下週三前重新測試問題頁面');
+  assert.equal(blocks[1].to_do.checked, false, '待辦寫進去時應為未勾選');
+  assert.equal(blocks[2].heading_2.rich_text[0].text.content, '📝 Mins');
+  assert.equal(blocks[3].heading_3.rich_text[0].text.content, '排版問題');
+  assert.equal(blocks[4].bulleted_list_item.rich_text[0].text.content, '文字被裁切');
 });
 
 test('buildBlocks：沒有待辦時不產生 What\'s next 區塊', () => {

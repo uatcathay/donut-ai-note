@@ -10,13 +10,15 @@ const bullet = (content) => ({ object: 'block', type: 'bulleted_list_item', bull
 const todo = (content) => ({ object: 'block', type: 'to_do', to_do: { rich_text: richText(content), checked: false } });
 
 export function buildBlocks(result) {
-  const blocks = [heading2('📝 Mins')];
-  for (const topic of result.topics) {
-    blocks.push(heading3(topic.title), ...topic.points.map(bullet));
-  }
-  // 沒有待辦是常態，空標題只會讓頁面看起來像漏了東西
+  const blocks = [];
+  // 待辦排在議題之前：回頭看筆記時最先想知道的是「我還要做什麼」。
+  // 沒有待辦是常態，空標題只會讓頁面看起來像漏了東西。
   if (result.nextSteps.length > 0) {
     blocks.push(heading2("◻️ What's next?"), ...result.nextSteps.map(todo));
+  }
+  blocks.push(heading2('📝 Mins'));
+  for (const topic of result.topics) {
+    blocks.push(heading3(topic.title), ...topic.points.map(bullet));
   }
   return blocks;
 }

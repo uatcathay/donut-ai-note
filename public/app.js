@@ -347,8 +347,9 @@ function renderDone(body) {
     <ul class="pv-todo">${body.nextSteps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`;
   // 逐字稿的去向跟著輸出目的地走：寫死「在 Notion」在沒設定 Notion 時會是錯的
   const where = isFile ? '在 .md 檔' : '在 Notion';
-  $('preview').innerHTML = `
-    <h3 class="pv-section">📝 Mins</h3>${topics}${next}
+  // 待辦排在前面：打開筆記最先想知道的是「我還要做什麼」，回顧細節是其次
+  $('preview').innerHTML = `${next}
+    <h3 class="pv-section">📝 Mins</h3>${topics}
     <small class="pv-note">（完整逐字稿已另存${where}）</small>`;
   show('done');
 }
