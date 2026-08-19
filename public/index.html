@@ -42,7 +42,7 @@
     /* 內容靠上對齊：視窗拉高時版面不得跟著往下飄。
        padding-top 取 70px＝(720 − 580) / 2，讓預設的 480×720 視窗維持原本垂直置中的視覺位置。 */
     body {
-      margin: 0; min-height: 100vh; padding: 70px 24px 40px;   /* 下緣 40：捲到底時待辦區不貼著視窗邊 */
+      margin: 0; min-height: 100vh; padding: 70px 24px 40px;   /* 下緣 40：捲到底時待分析區不貼著視窗邊 */
       display: flex; align-items: flex-start; justify-content: center;
       background: var(--bg); color: var(--fg);
       font-family: 'Azeret Mono', 'Noto Sans TC', -apple-system, "PingFang TC", sans-serif;
@@ -166,7 +166,7 @@
       color: var(--fg-muted); text-align: center; min-height: calc(1.7em * 3);
     }
     .proc-detail.is-retrying { color: var(--danger); }
-    /* 待辦清單：刻意低調，它是提醒不是主角 */
+    /* 待分析清單：刻意低調，它是提醒不是主角 */
     /* 跟著各頁內容走：每頁高度不同，但與上方元素永遠隔 80 */
     .pending { margin-top: 80px; width: calc(100vw - 80px); text-align: left; }
     .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 20px; }
@@ -236,13 +236,15 @@
 
     /* 確認對話框（原生 <dialog>：外觀自訂，焦點鎖定與 Esc 關閉由瀏覽器提供） */
     .dialog {
-      max-width: 280px; padding: 20px; border: 0; border-radius: 12px;
+      /* 固定 320 而非 max-width：<dialog> 預設 fit-content，只設上限的話短句的框會縮得比長句小。
+         視窗窄於 360 時讓步，否則框會被裁掉。高度不設，由內容撐開。 */
+      width: 320px; max-width: calc(100vw - 40px);
+      padding: 20px; border: 0; border-radius: 12px;
       background: var(--bg); color: var(--fg); text-align: center;
     }
     .dialog::backdrop { background: rgba(0, 0, 0, .45); }
     .dialog-msg { margin: 0 0 20px; font-size: 14px; line-height: 1.5; }
-    /* 多行說明置中會讓每行起點都不一樣，讀起來很累（同 #err 的處理） */
-    .dialog-msg--left { text-align: left; color: var(--fg-muted); }
+    .dialog-msg--title { font-size: 16px; font-weight: 600; }
     .dialog-actions { display: flex; justify-content: center; gap: 8px; }
     /* 對話框內兩顆按鈕並排，需抵銷 .linkbtn + .linkbtn 的垂直間距 */
     .dialog-actions .linkbtn + .linkbtn { margin-top: 0; }
@@ -327,10 +329,10 @@
 
   <!-- 錄音已經開始才跳出：提醒不該擋住錄音，沒注意到這個框也不會漏錄 -->
   <dialog id="quota-notice" class="dialog">
-    <p class="dialog-msg">已開始錄音。</p>
-    <p class="dialog-msg dialog-msg--left">
-      上次分析因 Gemini 免費版額度用盡而失敗，額度預計在<span id="quota-reset"></span> 重置。<br>
-      錄音會保留在待辦清單，額度恢復後再分析即可。
+    <p class="dialog-msg dialog-msg--title">已開始錄音</p>
+    <p class="dialog-msg">
+      上次分析因 Gemini 額度已達上限而失敗，額度預計在<span id="quota-reset"></span> 重置。<br>
+      這次錄音會保留在待分析清單。
     </p>
     <div class="dialog-actions">
       <button id="btn-quota-ok" class="linkbtn">知道了</button>
