@@ -140,16 +140,52 @@ export async function withRetry(attempt, opts = {}) {
   }
 }
 
+// 官方文件：「Requests per day (RPD) quotas reset at midnight Pacific time.」
+// 換算成台灣時間會隨美國日光節約時間在 15:00 與 16:00 之間跳動，所以要算、不能寫死。
+export function nextQuotaResetAt(now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles', hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(now).map((p) => [p.type, p.value]));
+  // 午夜在部分 ICU 版本會回 24 而不是 0
+  const intoDay = (Number(parts.hour) % 24) * 3600 + Number(parts.minute) * 60 + Number(parts.second);
+  return new Date(now.getTime() + (86_400 - intoDay) * 1000);
+}
+
+// 重置一定落在 24 小時內，所以本地時間只會是今天或明天。
+// timeZone 留白時用本機時區——這是本機工具，看的人就在這個時區（同 log.js）。
+export function describeQuotaReset(now = new Date(), timeZone = undefined) {
+  const at = nextQuotaResetAt(now);
+  const day = (d) => new Intl.DateTimeFormat('en-CA',
+    { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const clock = new Intl.DateTimeFormat('en-GB',
+    { timeZone, hour12: false, hour: '2-digit', minute: '2-digit' }).format(at);
+  return `${day(at) === day(now) ? '今天' : '明天'} ${clock}`;
+}
+
+// 錯誤原文要寫進 log 才有證據可查，但原文可能夾帶金鑰，不能原封不動落地。
+export function redactSecrets(text) {
+  return String(text).replace(/AIza[0-9A-Za-z_-]{10,}/g, 'AIza***');
+}
+
 // undici 的網路錯誤訊息是「fetch failed」，Gemini 的則是一整包 JSON，
 // 兩者直接丟給使用者看都等於沒說。原文留在 log，畫面上給人話。
-export function describeFailure(err, label) {
+export function describeFailure(err, label, opts = {}) {
   if (err instanceof AppError) return err;
   const raw = String(err?.message || err);
   if (/fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(raw)) {
     return new AppError('analyze', `${label}時連線 Gemini 失敗，請確認網路後用同一段錄音重試。`);
   }
   if (/RESOURCE_EXHAUSTED|"code"\s*:\s*429/.test(raw)) {
-    return new AppError('analyze', '已達 Gemini 免費版的用量上限，請稍後或明天再用同一段錄音重試。');
+    // 429 有兩種：每分鐘的頻率上限等一分鐘就好，日額度得等到太平洋時間午夜。
+    // 一律叫人「明天再來」會讓人白白放棄一份還救得回來的錄音。
+    if (/PerMinute|per minute/i.test(raw)) {
+      return new AppError('analyze',
+        '短時間內送出太多請求，已達 Gemini 免費版的每分鐘上限。等一分鐘後用同一段錄音重試即可。');
+    }
+    const reset = describeQuotaReset(opts.now || new Date(), opts.timeZone);
+    return new AppError('analyze',
+      `已達 Gemini 免費版的每日用量上限。額度預計在${reset} 重置，屆時可用同一段錄音重試。`);
   }
   if (/UNAVAILABLE|high demand|overloaded|"code"\s*:\s*(500|502|503|504)/i.test(raw)) {
     return new AppError('analyze', 'Gemini 目前忙碌（免費版尖峰時段），已自動重試多次仍未成功。這是對方的暫時性問題，稍後用同一段錄音重試即可。');
@@ -220,6 +256,9 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     return res.text;
   } catch (err) {
     report('　← 失敗');   // 失敗時同樣印出計時，才知道卡在哪一段
+    // 原文只在這一刻存在，describeFailure 之後就只剩人話。
+    // 2026-08-18 撞到額度上限時就是因此沒留下 quotaId，事後查不出是哪一種額度。
+    if (!(err instanceof AppError)) writeLog(`[錯誤] ${redactSecrets(err?.message || err)}`);
     throw describeFailure(err, '分析');
   } finally {
     endAnalysis();

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, nextQuotaResetAt, describeQuotaReset, redactSecrets } from '../src/analyzers/gemini.js';
 
 const MB = 1024 * 1024;
 
@@ -163,6 +163,57 @@ test('describeFailure：429 要說是用量上限，而不是叫人一直重試'
   const e = describeFailure(err429(), '分析');
   assert.doesNotMatch(e.message, /\{|"code"/);
   assert.match(e.message, /用量|額度/);
+});
+
+// 免費版每日額度在「太平洋時間午夜」重置（官方文件明載）。
+// 換算成台灣時間會隨美國日光節約時間在 15:00 與 16:00 之間變動，所以只能算、不能寫死。
+test('nextQuotaResetAt：夏令時間下一次重置是台灣時間 15:00', () => {
+  // 2026-08-19 10:00 台北（= 08-18 19:00 太平洋夏令時間）
+  assert.equal(nextQuotaResetAt(new Date('2026-08-19T02:00:00Z')).toISOString(),
+    '2026-08-19T07:00:00.000Z');   // = 2026-08-19 15:00 台北
+});
+
+test('nextQuotaResetAt：冬令時間會自動變成台灣時間 16:00，不是寫死 15:00', () => {
+  // 2026-01-15 10:00 台北（= 01-14 18:00 太平洋標準時間）
+  assert.equal(nextQuotaResetAt(new Date('2026-01-15T02:00:00Z')).toISOString(),
+    '2026-01-15T08:00:00.000Z');   // = 2026-01-15 16:00 台北
+});
+
+test('describeQuotaReset：還沒到重置時間就說「今天」', () => {
+  assert.equal(describeQuotaReset(new Date('2026-08-19T02:00:00Z'), 'Asia/Taipei'), '今天 15:00');
+});
+
+test('describeQuotaReset：過了重置時間就說「明天」，不能還講今天', () => {
+  // 2026-08-19 16:00 台北，當天的重置已經過了
+  assert.equal(describeQuotaReset(new Date('2026-08-19T08:00:00Z'), 'Asia/Taipei'), '明天 15:00');
+});
+
+test('describeFailure：每日額度用盡要講出確切的重置時間', () => {
+  const e = describeFailure(err429(), '分析',
+    { now: new Date('2026-08-19T02:00:00Z'), timeZone: 'Asia/Taipei' });
+  assert.match(e.message, /每日/);
+  assert.match(e.message, /今天 15:00/);
+  assert.doesNotMatch(e.message, /\{|"code"/);
+});
+
+// 429 不一定是日額度用盡——每分鐘的頻率上限也回 429，但那個等一分鐘就好。
+// 一律叫人「明天再來」會讓人白白放棄一份錄音。
+const err429PerMinute = () => new Error('got status: 429 {"error":{"code":429,"status":"RESOURCE_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.QuotaFailure","violations":[{"quotaId":"GenerateRequestsPerMinutePerProjectPerModel-FreeTier"}]}]}}');
+
+test('describeFailure：每分鐘上限只要等一分鐘，不該叫人明天再來', () => {
+  const e = describeFailure(err429PerMinute(), '分析',
+    { now: new Date('2026-08-19T02:00:00Z'), timeZone: 'Asia/Taipei' });
+  assert.match(e.message, /每分鐘/);
+  assert.doesNotMatch(e.message, /每日|明天|15:00/);
+});
+
+// 錯誤原文只有在寫進 log 的那一刻存在，之後就被翻成人話了。
+// 但原文可能夾帶金鑰，不能原封不動寫進檔案。
+test('redactSecrets 把 Google API 金鑰遮掉', () => {
+  const out = redactSecrets('請求失敗 key=AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q 結束');
+  assert.doesNotMatch(out, /AIzaSy/);
+  assert.match(out, /請求失敗/);
+  assert.match(out, /結束/);
 });
 
 test('parseGeminiJson 解析純 JSON', () => {
