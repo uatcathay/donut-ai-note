@@ -142,6 +142,20 @@ async function startRecording() {
   drawWave();
   startTimer();
   show('recording');
+  warnIfQuotaExhausted();   // 刻意不 await：查詢慢或失敗都不該影響已經在跑的錄音
+}
+
+// 額度用盡只有分析失敗過才知道，所以這是推論而非事實——
+// 因此只提醒、不阻止：錄音不需要 Gemini，而且失敗的錄音本來就會保留。
+async function warnIfQuotaExhausted() {
+  try {
+    const q = await (await fetch('/api/quota')).json();
+    if (!q.exhausted) return;
+    $('quota-reset').textContent = q.resetLabel;
+    $('quota-notice').showModal();
+  } catch {
+    // 查不到就算了，這只是提醒
+  }
 }
 
 function togglePause() {
@@ -409,6 +423,7 @@ $('btn-start').onclick = () => { clearError(); startRecording(); };
 $('btn-pause').onclick = togglePause;
 $('btn-stop').onclick = stopAndAnalyze;
 $('btn-restart').onclick = restartRecording;
+$('btn-quota-ok').onclick = () => $('quota-notice').close();
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
 $('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };

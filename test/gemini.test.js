@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, nextQuotaResetAt, describeQuotaReset, redactSecrets } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, nextQuotaResetAt, describeQuotaReset, redactSecrets } from '../src/analyzers/gemini.js';
 
 const MB = 1024 * 1024;
 
@@ -209,6 +209,13 @@ test('describeFailure：每分鐘上限只要等一分鐘，不該叫人明天�
 
 // 錯誤原文只有在寫進 log 的那一刻存在，之後就被翻成人話了。
 // 但原文可能夾帶金鑰，不能原封不動寫進檔案。
+test('classifyQuotaError 分辨每日與每分鐘，非額度錯誤回 null', () => {
+  assert.equal(classifyQuotaError(err429().message), 'daily');
+  assert.equal(classifyQuotaError(err429PerMinute().message), 'minute');
+  assert.equal(classifyQuotaError(err503().message), null);
+  assert.equal(classifyQuotaError('壞掉了'), null);
+});
+
 test('redactSecrets 把 Google API 金鑰遮掉', () => {
   const out = redactSecrets('請求失敗 key=AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q 結束');
   assert.doesNotMatch(out, /AIzaSy/);

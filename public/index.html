@@ -241,6 +241,8 @@
     }
     .dialog::backdrop { background: rgba(0, 0, 0, .45); }
     .dialog-msg { margin: 0 0 20px; font-size: 14px; line-height: 1.5; }
+    /* 多行說明置中會讓每行起點都不一樣，讀起來很累（同 #err 的處理） */
+    .dialog-msg--left { text-align: left; color: var(--fg-muted); }
     .dialog-actions { display: flex; justify-content: center; gap: 8px; }
     /* 對話框內兩顆按鈕並排，需抵銷 .linkbtn + .linkbtn 的垂直間距 */
     .dialog-actions .linkbtn + .linkbtn { margin-top: 0; }
@@ -320,6 +322,18 @@
     <div class="dialog-actions">
       <button id="btn-cancel-restart" class="linkbtn">Cancel</button>
       <button id="btn-confirm-restart" class="linkbtn linkbtn--danger">Restart</button>
+    </div>
+  </dialog>
+
+  <!-- 錄音已經開始才跳出：提醒不該擋住錄音，沒注意到這個框也不會漏錄 -->
+  <dialog id="quota-notice" class="dialog">
+    <p class="dialog-msg">已開始錄音。</p>
+    <p class="dialog-msg dialog-msg--left">
+      上次分析因 Gemini 免費版額度用盡而失敗，額度預計在<span id="quota-reset"></span> 重置。<br>
+      錄音會保留在待辦清單，額度恢復後再分析即可。
+    </p>
+    <div class="dialog-actions">
+      <button id="btn-quota-ok" class="linkbtn">知道了</button>
     </div>
   </dialog>
 

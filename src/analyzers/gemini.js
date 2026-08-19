@@ -1,6 +1,7 @@
 import { AppError } from '../errors.js';
 import { startAnalysis, setStage, noteRetry, endAnalysis } from '../progress.js';
 import { log as writeLog } from '../log.js';
+import { noteQuotaExhausted, clearQuota } from '../quota.js';
 
 // gemini-2.5-flash 已對新帳號關閉；用 flash-latest 別名指向當前穩定的免費 flash 模型
 const MODEL = 'gemini-flash-latest';
@@ -168,6 +169,16 @@ export function redactSecrets(text) {
   return String(text).replace(/AIza[0-9A-Za-z_-]{10,}/g, 'AIza***');
 }
 
+// 429 有兩種：每分鐘的頻率上限等一分鐘就好，日額度得等到太平洋時間午夜。
+// 一律叫人「明天再來」會讓人白白放棄一份還救得回來的錄音。
+// 註：quotaId 的欄位名稱依 Google API 慣例推得，尚未對照過真實的 429 內容；
+// 認不出來時退回日額度的說法，也就是維持原有行為。
+export function classifyQuotaError(raw) {
+  const text = String(raw);
+  if (!/RESOURCE_EXHAUSTED|"code"\s*:\s*429/.test(text)) return null;
+  return /PerMinute|per minute/i.test(text) ? 'minute' : 'daily';
+}
+
 // undici 的網路錯誤訊息是「fetch failed」，Gemini 的則是一整包 JSON，
 // 兩者直接丟給使用者看都等於沒說。原文留在 log，畫面上給人話。
 export function describeFailure(err, label, opts = {}) {
@@ -176,13 +187,12 @@ export function describeFailure(err, label, opts = {}) {
   if (/fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(raw)) {
     return new AppError('analyze', `${label}時連線 Gemini 失敗，請確認網路後用同一段錄音重試。`);
   }
-  if (/RESOURCE_EXHAUSTED|"code"\s*:\s*429/.test(raw)) {
-    // 429 有兩種：每分鐘的頻率上限等一分鐘就好，日額度得等到太平洋時間午夜。
-    // 一律叫人「明天再來」會讓人白白放棄一份還救得回來的錄音。
-    if (/PerMinute|per minute/i.test(raw)) {
-      return new AppError('analyze',
-        '短時間內送出太多請求，已達 Gemini 免費版的每分鐘上限。等一分鐘後用同一段錄音重試即可。');
-    }
+  const quota = classifyQuotaError(raw);
+  if (quota === 'minute') {
+    return new AppError('analyze',
+      '短時間內送出太多請求，已達 Gemini 免費版的每分鐘上限。等一分鐘後用同一段錄音重試即可。');
+  }
+  if (quota === 'daily') {
     const reset = describeQuotaReset(opts.now || new Date(), opts.timeZone);
     return new AppError('analyze',
       `已達 Gemini 免費版的每日用量上限。額度預計在${reset} 重置，屆時可用同一段錄音重試。`);
@@ -253,12 +263,15 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     }), timeoutMs, '分析錄音'), { label: '分析錄音', onRetry: noteRetry });
 
     report('');
+    clearQuota();   // 成功是額度可用的直接證據，比我們的推算可信
     return res.text;
   } catch (err) {
     report('　← 失敗');   // 失敗時同樣印出計時，才知道卡在哪一段
     // 原文只在這一刻存在，describeFailure 之後就只剩人話。
     // 2026-08-18 撞到額度上限時就是因此沒留下 quotaId，事後查不出是哪一種額度。
     if (!(err instanceof AppError)) writeLog(`[錯誤] ${redactSecrets(err?.message || err)}`);
+    // 記下來，讓下次開始錄音時就能先提醒，而不是等分析完才知道白等
+    if (classifyQuotaError(err?.message || err) === 'daily') noteQuotaExhausted(nextQuotaResetAt());
     throw describeFailure(err, '分析');
   } finally {
     endAnalysis();

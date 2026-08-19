@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
 import { checkConfig, createApp } from '../src/server.js';
+import { noteQuotaExhausted, clearQuota } from '../src/quota.js';
 
 test('checkConfig 缺 GEMINI_API_KEY 提出警告', () => {
   const w = checkConfig({});
@@ -132,6 +133,31 @@ test('GET /api/progress 讓前端問得到分析進度', async (t) => {
   const res = await fetch(`http://localhost:${port}/api/progress`);
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { active: false });
+});
+
+// 沒有 API 查得到「現在還剩多少額度」，唯一的信號是曾經撞到 429。
+// 前端在錄音開始後問這支，決定要不要提醒使用者分析可能會失敗。
+test('GET /api/quota：沒撞過額度時不需要提醒', async (t) => {
+  clearQuota();
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const res = await fetch(`http://localhost:${port}/api/quota`);
+  assert.deepEqual(await res.json(), { exhausted: false });
+});
+
+test('GET /api/quota：撞過額度就回報，並附上看得懂的重置時間', async (t) => {
+  clearQuota();
+  noteQuotaExhausted(new Date(Date.now() + 3_600_000));
+  t.after(() => clearQuota());
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { port } = server.address();
+  const body = await (await fetch(`http://localhost:${port}/api/quota`)).json();
+  assert.equal(body.exhausted, true);
+  assert.match(body.resetLabel, /^(今天|明天) \d{2}:\d{2}$/);
 });
 
 test('/shutdown 已移除（伺服器改為常駐，關窗不再結束程序）', async (t) => {

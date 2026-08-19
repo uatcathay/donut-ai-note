@@ -6,6 +6,8 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { processMeeting } from './pipeline.js';
 import { getProgress } from './progress.js';
+import { isQuotaExhausted } from './quota.js';
+import { describeQuotaReset } from './analyzers/gemini.js';
 import { log, warn } from './log.js';
 import {
   listRecordings, discardRecording, resolveRecordingPath, parseRecordingName,
@@ -37,6 +39,14 @@ export function createApp(deps = {}) {
   app.use(express.static(PUBLIC_DIR));
   // 分析可能跑上好幾分鐘。前端在等待期間輪詢這裡，才能把「重試中」與「已經死了」分開。
   app.get('/api/progress', (_req, res) => res.json(getProgress()));
+
+  // 前端在錄音「開始之後」才問這支——提醒不該擋住錄音，更不該延後它
+  app.get('/api/quota', (_req, res) => {
+    const now = new Date();
+    res.json(isQuotaExhausted(now)
+      ? { exhausted: true, resetLabel: describeQuotaReset(now) }
+      : { exhausted: false });
+  });
 
   // 分析失敗留下的錄音就是待辦清單本身——不必另外存狀態，讀目錄即可，
   // 而且關掉視窗、關機都還在，這正是「晚點有空再分析」需要的。
