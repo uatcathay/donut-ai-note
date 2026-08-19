@@ -279,7 +279,7 @@ async function refreshPending() {
   let items = [];
   try {
     items = (await (await fetch('/api/pending')).json()).items || [];
-  } catch { /* 待辦清單拿不到不該影響錄音 */ }
+  } catch { /* 待分析清單拿不到不該影響錄音 */ }
   items = items.filter((i) => !retryingIds.has(i.id));
   box.classList.toggle('hidden', items.length === 0);
   if (items.length === 0) { box.textContent = ''; return; }

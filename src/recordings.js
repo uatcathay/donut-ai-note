@@ -24,7 +24,7 @@ export async function saveRecording(buffer, name, dir = RECORDINGS_DIR) {
   return filePath;
 }
 
-// 檔名就是清單的資料來源——分析失敗留下的檔案本身即待辦項目，不必另外存狀態。
+// 檔名就是清單的資料來源——分析失敗留下的檔案本身即待分析項目，不必另外存狀態。
 const NAME_PATTERN = /^錄音_(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})_(.+)\.[A-Za-z0-9]+$/;
 
 export function parseRecordingName(name) {
@@ -47,12 +47,12 @@ export async function listRecordings(dir = RECORDINGS_DIR) {
   try {
     names = await readdir(dir);
   } catch {
-    return [];   // 目錄還沒建立就等於沒有待辦
+    return [];   // 目錄還沒建立就等於沒有待分析的錄音
   }
   const items = [];
   for (const name of names) {
     const parsed = parseRecordingName(name);
-    if (!parsed) continue;   // .DS_Store 之類的雜檔不該出現在待辦清單
+    if (!parsed) continue;   // .DS_Store 之類的雜檔不該出現在待分析清單
     const { size } = await stat(path.join(dir, name));
     items.push({ ...parsed, sizeBytes: size });
   }

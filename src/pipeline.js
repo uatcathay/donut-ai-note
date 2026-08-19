@@ -44,7 +44,7 @@ export async function processMeeting(input, deps = {}) {
 
   // 先落地再分析：分析與寫出都可能失敗（Gemini 尖峰時段常回 503），
   // 而錄音是這條流程裡唯一無法重來的東西。
-  // 重試待辦清單裡的錄音時檔案已經在磁碟上了，再存一份只會讓清單長出重複項目。
+  // 重試待分析清單裡的錄音時檔案已經在磁碟上了，再存一份只會讓清單長出重複項目。
   const reusing = Boolean(input.recordingPath);
   const recordingName = reusing
     ? path.basename(input.recordingPath)

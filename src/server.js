@@ -48,7 +48,7 @@ export function createApp(deps = {}) {
       : { exhausted: false });
   });
 
-  // 分析失敗留下的錄音就是待辦清單本身——不必另外存狀態，讀目錄即可，
+  // 分析失敗留下的錄音就是待分析清單本身——不必另外存狀態，讀目錄即可，
   // 而且關掉視窗、關機都還在，這正是「晚點有空再分析」需要的。
   app.get('/api/pending', async (_req, res) => {
     res.json({ items: await list() });
@@ -67,7 +67,7 @@ export function createApp(deps = {}) {
         audioBuffer,
         mimeType: `audio/${path.extname(filePath).slice(1)}`,
         userTitle: parsed?.title || '',
-        recordingPath: filePath,   // 重用既有檔案，避免重試失敗時長出第二筆待辦
+        recordingPath: filePath,   // 重用既有檔案，避免重試失敗時長出第二筆待分析項目
       });
       res.json({ ok: true, ...result });
     } catch (e) {
