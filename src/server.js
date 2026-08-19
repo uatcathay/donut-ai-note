@@ -73,7 +73,11 @@ export function createApp(deps = {}) {
     } catch (e) {
       if (e?.code === 'ENOENT') return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
       const stage = e.stage || 'unknown';
-      res.status(stage === 'unknown' ? 500 : 400).json({ ok: false, stage, message: e.message });
+      // 附上 id：錯誤框已經在講這一筆了，前端要據此把它從待分析清單濾掉，
+      // 並且讓「再試一次」重試這個檔案而不是重傳一份新的。
+      const recordingId = e.recordingPath ? path.basename(e.recordingPath) : undefined;
+      res.status(stage === 'unknown' ? 500 : 400)
+        .json({ ok: false, stage, message: e.message, recordingId });
     }
   });
 
@@ -96,7 +100,11 @@ export function createApp(deps = {}) {
       res.json({ ok: true, ...result });
     } catch (e) {
       const stage = e.stage || 'unknown';
-      res.status(stage === 'unknown' ? 500 : 400).json({ ok: false, stage, message: e.message });
+      // 附上 id：錯誤框已經在講這一筆了，前端要據此把它從待分析清單濾掉，
+      // 並且讓「再試一次」重試這個檔案而不是重傳一份新的。
+      const recordingId = e.recordingPath ? path.basename(e.recordingPath) : undefined;
+      res.status(stage === 'unknown' ? 500 : 400)
+        .json({ ok: false, stage, message: e.message, recordingId });
     }
   });
   app.use((err, _req, res, next) => {

@@ -24,6 +24,10 @@ let timerId = null;
 let audioCtx = null;
 let analyser = null;
 let rafId = null;
+// 錯誤框正在講的那一份錄音。它已經由錯誤框加上「再試一次」代表了，
+// 不該同時又出現在待分析清單裡——同一份錄音顯示成兩筆會讓人以為錄了兩次。
+// 宣告在這裡而非 showError 旁邊：refreshPending 會讀它，位置在前面。
+let failedRecordingId = null;
 
 function fmt(s) {
   const m = String(Math.floor(s / 60)).padStart(2, '0');
@@ -280,7 +284,7 @@ async function refreshPending() {
   try {
     items = (await (await fetch('/api/pending')).json()).items || [];
   } catch { /* 待分析清單拿不到不該影響錄音 */ }
-  items = items.filter((i) => !retryingIds.has(i.id));
+  items = items.filter((i) => !retryingIds.has(i.id) && i.id !== failedRecordingId);
   box.classList.toggle('hidden', items.length === 0);
   if (items.length === 0) { box.textContent = ''; return; }
 
@@ -333,8 +337,7 @@ async function retryPending(item) {
     if (!body.ok) throw new Error(body.message || '處理失敗');
     renderDone(body);
   } catch (e) {
-    show('idle');
-    showError(`處理失敗：${describeClientFailure(e)}`, false);
+    showError(`處理失敗：${describeClientFailure(e)}`, { recordingId: item.id });
   } finally {
     retryingIds.delete(item.id);
     stopProgressPolling();
@@ -351,10 +354,12 @@ async function sendForProcessing() {
   try {
     const res = await fetch('/api/process', { method: 'POST', body: fd });
     const body = await res.json();
-    if (!body.ok) throw new Error(body.message || '處理失敗');
+    if (!body.ok) throw Object.assign(new Error(body.message || '處理失敗'),
+      { recordingId: body.recordingId });
     renderDone(body);
   } catch (e) {
-    showError(`處理失敗：${describeClientFailure(e)}`, true);
+    showError(`處理失敗：${describeClientFailure(e)}`,
+      { recordingId: e.recordingId || null, blobRetry: true });
   } finally {
     stopProgressPolling();
     refreshPending();
@@ -391,15 +396,19 @@ function renderDone(body) {
   show('done');
 }
 
-function showError(msg, retryable = false) {
+// recordingId：錄音已落地，重試就重試那個檔案（不必重傳）。
+// blobRetry：還沒落地就失敗（例如請求根本沒送到伺服器），只能用記憶體裡的錄音重傳。
+function showError(msg, { recordingId = null, blobRetry = false } = {}) {
+  failedRecordingId = recordingId;
   const err = $('err');
   err.textContent = msg;
   err.classList.remove('hidden');
-  $('btn-retry').classList.toggle('hidden', !retryable);
-  if (retryable) show('idle'); // 回到可操作狀態，但保留 lastBlob 供重試
+  $('btn-retry').classList.toggle('hidden', !(recordingId || (blobRetry && lastBlob)));
+  show('idle');   // 回到可操作狀態
 }
 
 function clearError() {
+  failedRecordingId = null;
   $('err').classList.add('hidden');
   $('btn-retry').classList.add('hidden');
 }
@@ -427,7 +436,12 @@ $('btn-quota-ok').onclick = () => $('quota-notice').close();
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
 $('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };
-$('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
+// 有存檔就重試那個檔案——重傳一份會被當成全新的錄音再存一次，清單就長出重複項目。
+// 沒存檔（請求沒送到伺服器）才退回用記憶體裡的錄音重傳。
+$('btn-retry').onclick = () => {
+  if (failedRecordingId) return retryPending({ id: failedRecordingId });
+  if (lastBlob) { clearError(); sendForProcessing(); }
+};
 
 show('idle');
 refreshPending();   // 開啟視窗就看得到還有哪些錄音沒分析

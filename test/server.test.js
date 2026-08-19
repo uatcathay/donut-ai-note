@@ -135,6 +135,32 @@ test('GET /api/progress 讓前端問得到分析進度', async (t) => {
   assert.deepEqual(await res.json(), { active: false });
 });
 
+// 錯誤框和待分析清單會同時指向同一份錄音，看起來像兩筆。
+// 前端要濾掉「錯誤框已經在講的那一筆」，就得知道它的 id。
+test('POST /api/process 失敗時附上 recordingId', async (t) => {
+  const app = createApp({
+    processMeeting: async () => {
+      const e = new AppError('analyze', '分析失敗');
+      e.recordingPath = '/tmp/tmp-recordings/錄音_2026-08-19_1530_測試.webm';
+      throw e;
+    },
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { body } = await postAudio(server.address().port);
+  assert.equal(body.recordingId, '錄音_2026-08-19_1530_測試.webm');
+});
+
+test('POST /api/process 在錄音還沒落地就失敗時不附 recordingId', async (t) => {
+  const app = createApp({
+    processMeeting: async () => { throw new AppError('upload', '沒收到音檔'); },
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { body } = await postAudio(server.address().port);
+  assert.equal(body.recordingId, undefined, '沒有存檔就沒有 id，前端才知道要退回用記憶體重傳');
+});
+
 // 沒有 API 查得到「現在還剩多少額度」，唯一的信號是曾經撞到 429。
 // 前端在錄音開始後問這支，決定要不要提醒使用者分析可能會失敗。
 test('GET /api/quota：沒撞過額度時不需要提醒', async (t) => {
