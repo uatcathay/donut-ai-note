@@ -21,6 +21,7 @@
       --ok: #1a8a4a;
       --danger: #c0392b;
       --danger-bg: rgba(192, 57, 43, .1);
+      --scroll-thumb: #C4C4C4;   /* 捲軸拖曳桿；非文字元素，不屬於四階灰的體系 */
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -35,10 +36,24 @@
         --ok: #4ade80;
         --danger: #ff6b5e;
         --danger-bg: rgba(255, 107, 94, .12);
+        --scroll-thumb: #4A4A4A;
       }
     }
 
     * { box-sizing: border-box; }
+
+    /* 捲軸：只留拖曳桿，不畫軌道。預設那條淺色軌道是實心矩形，會蓋掉底下容器的
+       圓角，看起來像右上角被切掉一塊。拖曳桿用透明邊框加 background-clip 內縮，
+       才不會整根貼著容器邊緣。這個 App 只跑在 Chrome PWA 裡，故只寫 -webkit- 版本。 */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      background-clip: content-box;   /* 搭配透明邊框，讓實際色塊窄於配置寬度 */
+      border: 2px solid transparent;
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-corner { background: transparent; }
     /* 內容靠上對齊：視窗拉高時版面不得跟著往下飄。
        padding-top 取 70px＝(720 − 580) / 2，讓預設的 480×720 視窗維持原本垂直置中的視覺位置。 */
     body {
@@ -205,7 +220,8 @@
       text-align: left;
     }
     .copy-btn {
-      position: absolute; top: 6px; right: 6px; z-index: 1;
+      /* right 要讓開捲軸的 8px，否則圖示會壓在拖曳桿上；14 = 8 + 原本的 6 */
+      position: absolute; top: 6px; right: 14px; z-index: 1;
       width: 28px; height: 28px; padding: 0;
       display: flex; align-items: center; justify-content: center;
       border: 0; border-radius: 6px; background: none;
