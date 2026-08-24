@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, nextQuotaResetAt, describeQuotaReset, redactSecrets } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, discardUploaded, nextQuotaResetAt, describeQuotaReset, redactSecrets } from '../src/analyzers/gemini.js';
 
 const MB = 1024 * 1024;
 
@@ -209,6 +209,32 @@ test('describeFailure：每分鐘上限只要等一分鐘，不該叫人明天�
 
 // 錯誤原文只有在寫進 log 的那一刻存在，之後就被翻成人話了。
 // 但原文可能夾帶金鑰，不能原封不動寫進檔案。
+// 分析要拿到音檔，所以整份會上傳到 Gemini。那份跟本機的是兩個獨立的複本：
+// 本機那份成功後就刪了，雲端那份沒人刪的話會留到 48 小時後才自動過期。
+// 會議錄音是敏感內容，需要它的時間只有那幾分鐘。
+test('discardUploaded 刪掉雲端那份音檔', async () => {
+  const deleted = [];
+  const ai = { files: { delete: async ({ name }) => deleted.push(name) } };
+  assert.equal(await discardUploaded(ai, 'files/abc123', () => {}), true);
+  assert.deepEqual(deleted, ['files/abc123']);
+});
+
+test('discardUploaded：連上傳都沒成功時不呼叫刪除', async () => {
+  let called = false;
+  const ai = { files: { delete: async () => { called = true; } } };
+  assert.equal(await discardUploaded(ai, null, () => {}), false);
+  assert.equal(called, false);
+});
+
+// 清理失敗不能蓋掉分析結果——筆記已經寫好了，比清不掉一個暫存檔重要得多。
+test('discardUploaded：刪不掉只寫 log，不拋錯', async () => {
+  const logs = [];
+  const ai = { files: { delete: async () => { throw new Error('network down'); } } };
+  assert.equal(await discardUploaded(ai, 'files/abc123', (m) => logs.push(m)), false);
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /48 小時/, '要讓人知道刪不掉也會自己過期，不必手動處理');
+});
+
 test('classifyQuotaError 分辨每日與每分鐘，非額度錯誤回 null', () => {
   assert.equal(classifyQuotaError(err429().message), 'daily');
   assert.equal(classifyQuotaError(err429PerMinute().message), 'minute');

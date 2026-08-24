@@ -169,6 +169,24 @@ export function redactSecrets(text) {
   return String(text).replace(/AIza[0-9A-Za-z_-]{10,}/g, 'AIza***');
 }
 
+// 分析要拿到音檔，所以整份會上傳到 Gemini。那份跟本機的是兩個獨立的複本：
+// 本機那份成功後就刪了，雲端那份沒人刪的話會留到 48 小時後才自動過期。
+// 會議錄音是敏感內容，而我們需要它的時間只有那幾分鐘。
+//
+// 刪不掉不算失敗：筆記已經寫好了，比清不掉一個暫存檔重要得多，
+// 而且就算真的刪不掉，它終究會自己過期。
+export async function discardUploaded(ai, fileName, log = writeLog) {
+  if (!fileName) return false;   // 連上傳都沒成功，沒有東西可刪
+  try {
+    await ai.files.delete({ name: fileName });
+    return true;
+  } catch (err) {
+    log(`[清理] 雲端音檔刪除失敗（${fileName}），48 小時後會自動過期：`
+      + redactSecrets(err?.message || err));
+    return false;
+  }
+}
+
 // 429 有兩種：每分鐘的頻率上限等一分鐘就好，日額度得等到太平洋時間午夜。
 // 一律叫人「明天再來」會讓人白白放棄一份還救得回來的錄音。
 // 註：quotaId 的欄位名稱依 Google API 慣例推得，尚未對照過真實的 429 內容；
@@ -236,9 +254,10 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     }) + `　輪詢 ${polls} 次${tag}`,
   );
 
-  try {
-    let file = await withTimeout(
+  let uploadedName = null;   // 記在 try 外面，finally 才刪得到
+  try {    let file = await withTimeout(
       ai.files.upload({ file: blob, config: { mimeType } }), timeoutMs, '上傳音檔');
+    uploadedName = file.name;
     tUploaded = Date.now();
 
     // 輪詢也要有上限，否則檔案一直停在 PROCESSING 就會無限迴圈
@@ -274,6 +293,8 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     if (classifyQuotaError(err?.message || err) === 'daily') noteQuotaExhausted(nextQuotaResetAt());
     throw describeFailure(err, '分析');
   } finally {
+    // 不論成功或失敗都刪：失敗後的重試本來就會重新上傳一份。
+    await discardUploaded(ai, uploadedName);
     endAnalysis();
   }
 }
