@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startAnalysis, setStage, noteRetry, endAnalysis, getProgress } from '../src/progress.js';
+import { startAnalysis, setStage, noteRetry, endAnalysis, getProgress, setAnalysisTarget } from '../src/progress.js';
 
 test('沒有進行中的分析時回報 active: false', () => {
   endAnalysis();
@@ -53,4 +53,32 @@ test('沒有進行中的分析時，setStage 與 noteRetry 不會憑空造出狀
   setStage('analyze');
   noteRetry('busy', 1, 3);
   assert.deepEqual(getProgress(), { active: false });
+});
+
+// 分析改成在背景跑之後，畫面上同時列著好幾筆錄音，
+// 進度必須說得出自己跑的是哪一筆，那一列才知道要顯示「分析中」。
+test('進度帶著錄音 id，清單才知道是哪一列在跑', () => {
+  endAnalysis();
+  setAnalysisTarget('錄音_2026-08-28_1420_設計評審.webm');
+  startAnalysis(1000);
+  assert.equal(getProgress(2000).recordingId, '錄音_2026-08-28_1420_設計評審.webm');
+  endAnalysis();
+});
+
+test('setAnalysisTarget 早於 startAnalysis 也不會被蓋掉', () => {
+  endAnalysis();
+  setAnalysisTarget('a.webm');
+  startAnalysis(1000);   // pipeline 先設定目標，分析器才開始
+  assert.equal(getProgress(1500).recordingId, 'a.webm');
+  endAnalysis();
+});
+
+test('分析結束後目標一併清掉，不會殘留到下一筆', () => {
+  setAnalysisTarget('a.webm');
+  startAnalysis(1000);
+  endAnalysis();
+  assert.deepEqual(getProgress(), { active: false });
+  startAnalysis(2000);
+  assert.equal(getProgress(2500).recordingId, null);
+  endAnalysis();
 });

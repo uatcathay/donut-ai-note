@@ -11,7 +11,10 @@ import { describeQuotaReset } from './analyzers/gemini.js';
 import { log, warn } from './log.js';
 import {
   listRecordings, discardRecording, resolveRecordingPath, parseRecordingName,
+  saveRecording, buildRecordingName,
 } from './recordings.js';
+import { formatStamp } from './clock.js';
+import { listCompleted, takeCompleted, removeCompleted } from './completed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -32,13 +35,21 @@ export function createApp(deps = {}) {
   const list = deps.listRecordings || listRecordings;
   const discard = deps.discardRecording || discardRecording;
   const resolvePath = deps.resolveRecordingPath || resolveRecordingPath;
+  const save = deps.saveRecording || saveRecording;
+  const progress = deps.getProgress || getProgress;
   // 同時間只跑一個分析：兩個分析會搶同一份進度狀態，也等於自己加倍 503 的機率
-  const isAnalyzing = deps.isAnalyzing || (() => getProgress().active);
+  const isAnalyzing = deps.isAnalyzing || (() => progress().active);
+
+  // 分析在背景跑，沒有人在等它的回傳值——失敗只能寫進 log，
+  // 畫面上則由那筆錄音留在清單裡（狀態為待分析、附上原因）來表達。
+  const analyzeInBackground = (input) => {
+    run(input).catch((e) => warn(`[分析失敗] ${input.recordingPath}：${e.message}`));
+  };
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
   app.use(express.static(PUBLIC_DIR));
   // 分析可能跑上好幾分鐘。前端在等待期間輪詢這裡，才能把「重試中」與「已經死了」分開。
-  app.get('/api/progress', (_req, res) => res.json(getProgress()));
+  app.get('/api/progress', (_req, res) => res.json(progress()));
 
   // 前端在錄音「開始之後」才問這支——提醒不該擋住錄音，更不該延後它
   app.get('/api/quota', (_req, res) => {
@@ -63,22 +74,40 @@ export function createApp(deps = {}) {
     try {
       const audioBuffer = await readFile(filePath);
       const parsed = parseRecordingName(req.params.id);
-      const result = await run({
+      res.json({ ok: true });   // 同樣不等結果：進度與失敗都由清單那一列表達
+      analyzeInBackground({
         audioBuffer,
         mimeType: `audio/${path.extname(filePath).slice(1)}`,
         userTitle: parsed?.title || '',
         recordingPath: filePath,   // 重用既有檔案，避免重試失敗時長出第二筆待分析項目
       });
-      res.json({ ok: true, ...result });
     } catch (e) {
       if (e?.code === 'ENOENT') return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
-      const stage = e.stage || 'unknown';
-      // 附上 id：錯誤框已經在講這一筆了，前端要據此把它從待分析清單濾掉，
-      // 並且讓「再試一次」重試這個檔案而不是重傳一份新的。
-      const recordingId = e.recordingPath ? path.basename(e.recordingPath) : undefined;
-      res.status(stage === 'unknown' ? 500 : 400)
-        .json({ ok: false, stage, message: e.message, recordingId });
+      res.status(500).json({ ok: false, message: e.message });
     }
+  });
+
+  // 畫面上的「分析清單」＝磁碟上的錄音 ＋ 目前在跑的那一筆 ＋ 最近完成的通知。
+  // 合成一支給前端，省得它自己對三支端點的結果做時序對齊。
+  app.get('/api/jobs', async (_req, res) => {
+    const p = progress();
+    const recordings = await list();
+    const items = recordings.map((r) => (p.active && p.recordingId === r.id
+      ? { ...r, state: 'analyzing', stage: p.stage, elapsedMs: p.elapsedMs, retry: p.retry }
+      : { ...r, state: 'pending' }));
+    // 已完成的排在最前面：它是剛發生的事，而且要你看一眼才會消失
+    res.json({ items: [...listCompleted().map((c) => ({ ...c, state: 'done' })), ...items] });
+  });
+
+  app.get('/api/completed/:id', (req, res) => {
+    const result = takeCompleted(req.params.id);
+    if (!result) return res.status(404).json({ ok: false, message: '找不到這份摘要。' });
+    res.json(result);
+  });
+
+  // 只是把那一列收掉，Notion 或桌面上的筆記不受影響
+  app.delete('/api/completed/:id', (req, res) => {
+    res.json({ ok: removeCompleted(req.params.id) });
   });
 
   app.delete('/api/pending/:id', async (req, res) => {
@@ -87,24 +116,30 @@ export function createApp(deps = {}) {
     await discard(filePath);
     res.json({ ok: true });
   });
+  // 錄音一落地就回應，不等分析跑完——分析可能要好幾分鐘，而使用者往往正要開下一場會。
+  // 回應之前一定要先存檔：前端隨即會去讀清單，檔案還沒落地的話那一筆不會出現。
   app.post('/api/process', upload.single('audio'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ ok: false, stage: 'upload', message: '沒有收到音檔' });
       }
-      const result = await run({
-        audioBuffer: req.file.buffer,
-        mimeType: req.file.mimetype,
-        userTitle: req.body.title || '',
-      });
-      res.json({ ok: true, ...result });
+      const userTitle = req.body.title || '';
+      const name = buildRecordingName(userTitle, formatStamp(new Date()), req.file.mimetype);
+      const filePath = await save(req.file.buffer, name);
+      res.json({ ok: true, id: name });
+
+      // 已經有分析在跑就先擱著，那一筆會以「待分析」留在清單上等使用者按「立即分析」
+      if (!isAnalyzing()) {
+        analyzeInBackground({
+          audioBuffer: req.file.buffer,
+          mimeType: req.file.mimetype,
+          userTitle,
+          recordingPath: filePath,   // 檔案已落地，不要再存一份
+        });
+      }
     } catch (e) {
       const stage = e.stage || 'unknown';
-      // 附上 id：錯誤框已經在講這一筆了，前端要據此把它從待分析清單濾掉，
-      // 並且讓「再試一次」重試這個檔案而不是重傳一份新的。
-      const recordingId = e.recordingPath ? path.basename(e.recordingPath) : undefined;
-      res.status(stage === 'unknown' ? 500 : 400)
-        .json({ ok: false, stage, message: e.message, recordingId });
+      res.status(stage === 'unknown' ? 500 : 400).json({ ok: false, stage, message: e.message });
     }
   });
   app.use((err, _req, res, next) => {

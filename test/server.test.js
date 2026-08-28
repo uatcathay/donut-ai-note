@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
 import { checkConfig, createApp } from '../src/server.js';
 import { noteQuotaExhausted, clearQuota } from '../src/quota.js';
+import { noteCompleted, listCompleted, clearCompleted } from '../src/completed.js';
 
 test('checkConfig 缺 GEMINI_API_KEY 提出警告', () => {
   const w = checkConfig({});
@@ -21,37 +22,6 @@ async function postAudio(port, { title = '會議' } = {}) {
   return { status: res.status, body: await res.json() };
 }
 
-test('POST /api/process 成功回傳結果', async () => {
-  const app = createApp({
-    processMeeting: async (input) => ({
-      title: input.userTitle, topics: [{ title: 'T', points: ['a'] }], nextSteps: [], transcript: 't',
-      destination: { type: 'markdown', filePath: '/x.md' },
-    }),
-  });
-  const server = app.listen(0);
-  const { port } = server.address();
-  const { status, body } = await postAudio(port, { title: 'Hi' });
-  assert.equal(status, 200);
-  assert.equal(body.ok, true);
-  assert.equal(body.title, 'Hi');
-  assert.equal(body.destination.type, 'markdown');
-  server.close();
-});
-
-test('POST /api/process 分析失敗回 ok:false 與 stage', async () => {
-  const app = createApp({
-    processMeeting: async () => { throw new AppError('analyze', '額度用完'); },
-  });
-  const server = app.listen(0);
-  const { port } = server.address();
-  const { status, body } = await postAudio(port);
-  assert.equal(status, 400);
-  assert.equal(body.ok, false);
-  assert.equal(body.stage, 'analyze');
-  assert.equal(body.message, '額度用完');
-  server.close();
-});
-
 test('POST /api/process 無音檔回 400 upload', async () => {
   const app = createApp({
     processMeeting: async () => { throw new Error('should not be called'); },
@@ -66,6 +36,21 @@ test('POST /api/process 無音檔回 400 upload', async () => {
   assert.equal(body.ok, false);
   assert.equal(body.stage, 'upload');
   server.close();
+});
+
+// 分析失敗不再由回應表達——那時候使用者早就離開這一頁了。
+// 失敗會讓錄音留在清單上（狀態待分析、附上原因），回應本身照樣是成功收件。
+test('POST /api/process 就算分析注定失敗，收件本身仍回成功', async (t) => {
+  const app = createApp({
+    saveRecording: async (buf, name) => `/tmp/${name}`,
+    isAnalyzing: () => false,
+    processMeeting: async () => { throw new AppError('analyze', '額度用完'); },
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { status, body } = await postAudio(server.address().port);
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
 });
 
 test('GET /api/pending 列出待重試的錄音', async (t) => {
@@ -135,32 +120,6 @@ test('GET /api/progress 讓前端問得到分析進度', async (t) => {
   assert.deepEqual(await res.json(), { active: false });
 });
 
-// 錯誤框和待分析清單會同時指向同一份錄音，看起來像兩筆。
-// 前端要濾掉「錯誤框已經在講的那一筆」，就得知道它的 id。
-test('POST /api/process 失敗時附上 recordingId', async (t) => {
-  const app = createApp({
-    processMeeting: async () => {
-      const e = new AppError('analyze', '分析失敗');
-      e.recordingPath = '/tmp/tmp-recordings/錄音_2026-08-19_1530_測試.webm';
-      throw e;
-    },
-  });
-  const server = app.listen(0);
-  t.after(() => server.close());
-  const { body } = await postAudio(server.address().port);
-  assert.equal(body.recordingId, '錄音_2026-08-19_1530_測試.webm');
-});
-
-test('POST /api/process 在錄音還沒落地就失敗時不附 recordingId', async (t) => {
-  const app = createApp({
-    processMeeting: async () => { throw new AppError('upload', '沒收到音檔'); },
-  });
-  const server = app.listen(0);
-  t.after(() => server.close());
-  const { body } = await postAudio(server.address().port);
-  assert.equal(body.recordingId, undefined, '沒有存檔就沒有 id，前端才知道要退回用記憶體重傳');
-});
-
 // 沒有 API 查得到「現在還剩多少額度」，唯一的信號是曾經撞到 429。
 // 前端在錄音開始後問這支，決定要不要提醒使用者分析可能會失敗。
 test('GET /api/quota：沒撞過額度時不需要提醒', async (t) => {
@@ -222,4 +181,113 @@ test('manifest 宣告的圖示檔實際取得得到', async () => {
     assert.match(res.headers.get('content-type'), /image\/png/);
   }
   server.close();
+});
+
+// ── 分析改成在背景跑 ──────────────────────────────────────
+// 原本 POST /api/process 會一路等到分析完才回應，前端因此被「處理中」那頁綁住，
+// 沒辦法在等待期間開始錄下一場會議。現在錄音一落地就回應，分析自己在背景跑。
+
+test('POST /api/process 錄音一落地就回應，不等分析跑完', async (t) => {
+  let analyzing = false;
+  const saved = [];
+  let release;
+  const blocked = new Promise((r) => { release = r; });
+  const app = createApp({
+    saveRecording: async (buf, name) => { saved.push(name); return `/tmp/${name}`; },
+    isAnalyzing: () => analyzing,
+    processMeeting: async () => { analyzing = true; await blocked; return {}; },
+  });
+  const server = app.listen(0);
+  t.after(() => { release(); server.close(); });
+
+  const t0 = Date.now();
+  const { status, body } = await postAudio(server.address().port, { title: '設計評審' });
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  assert.ok(Date.now() - t0 < 1000, '不該等分析完成才回應');
+  assert.match(body.id, /^錄音_.+設計評審\./, '要回傳錄音 id，清單才標得出是哪一筆');
+  assert.equal(saved.length, 1, '回應之前錄音就該落地');
+});
+
+test('POST /api/process 在已有分析進行中時只存檔，不動手分析', async (t) => {
+  const saved = [];
+  let analyzed = 0;
+  const app = createApp({
+    saveRecording: async (buf, name) => { saved.push(name); return `/tmp/${name}`; },
+    isAnalyzing: () => true,
+    processMeeting: async () => { analyzed += 1; return {}; },
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { body } = await postAudio(server.address().port);
+  assert.equal(body.ok, true);
+  assert.equal(saved.length, 1, '錄音一定要留下來');
+  assert.equal(analyzed, 0, '兩個分析並行會搶進度狀態，也讓 503 機率加倍');
+});
+
+// ── 清單合併三種狀態 ─────────────────────────────────────
+test('GET /api/jobs 合併待分析、分析中、已完成', async (t) => {
+  clearCompleted();
+  noteCompleted('錄音_2026-08-28_1000_專案同步.webm', {
+    title: '專案同步', topics: [{ title: 'T', points: ['a'] }], nextSteps: [],
+    transcript: 't', destination: { type: 'notion', url: 'https://x' },
+  });
+  const app = createApp({
+    processMeeting: async () => ({}),
+    listRecordings: async () => [
+      { id: 'a.webm', label: '甲（20260828 14:20）', title: '甲', savedAt: '20260828 14:20', sizeBytes: 100 },
+      { id: 'b.webm', label: '乙（20260828 15:05）', title: '乙', savedAt: '20260828 15:05', sizeBytes: 200 },
+    ],
+    getProgress: () => ({ active: true, stage: 'analyze', elapsedMs: 134000, retry: null, recordingId: 'a.webm' }),
+  });
+  const server = app.listen(0);
+  t.after(() => { server.close(); clearCompleted(); });
+  const { items } = await (await fetch(`http://localhost:${server.address().port}/api/jobs`)).json();
+
+  const byId = Object.fromEntries(items.map((i) => [i.id, i]));
+  assert.equal(byId['a.webm'].state, 'analyzing', '進度指名的那一筆要標成分析中');
+  assert.equal(byId['a.webm'].elapsedMs, 134000);
+  assert.equal(byId['b.webm'].state, 'pending', '其餘磁碟上的錄音都是待分析');
+  assert.equal(byId['錄音_2026-08-28_1000_專案同步.webm'].state, 'done');
+  assert.equal(byId['錄音_2026-08-28_1000_專案同步.webm'].title, '專案同步');
+});
+
+test('GET /api/jobs 沒有分析在跑時，磁碟上的都是待分析', async (t) => {
+  clearCompleted();
+  const app = createApp({
+    processMeeting: async () => ({}),
+    listRecordings: async () => [{ id: 'a.webm', label: '甲', sizeBytes: 100 }],
+    getProgress: () => ({ active: false }),
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { items } = await (await fetch(`http://localhost:${server.address().port}/api/jobs`)).json();
+  assert.deepEqual(items.map((i) => i.state), ['pending']);
+});
+
+// ── 已完成那一列 ────────────────────────────────────────
+test('GET /api/completed/:id 取得摘要內容供摘要頁顯示', async (t) => {
+  clearCompleted();
+  noteCompleted('a.webm', {
+    title: '設計評審', topics: [{ title: '議題', points: ['重點'] }], nextSteps: ['待辦'],
+    transcript: 't', destination: { type: 'notion', url: 'https://x' },
+  });
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  t.after(() => { server.close(); clearCompleted(); });
+  const body = await (await fetch(`http://localhost:${server.address().port}/api/completed/a.webm`)).json();
+  assert.equal(body.title, '設計評審');
+  assert.deepEqual(body.nextSteps, ['待辦']);
+});
+
+test('DELETE /api/completed/:id 把那一列移除，不動 Notion 上的筆記', async (t) => {
+  clearCompleted();
+  noteCompleted('a.webm', { title: '甲', topics: [], nextSteps: [], transcript: 't', destination: {} });
+  const app = createApp({ processMeeting: async () => ({}) });
+  const server = app.listen(0);
+  t.after(() => { server.close(); clearCompleted(); });
+  const port = server.address().port;
+  const res = await fetch(`http://localhost:${port}/api/completed/a.webm`, { method: 'DELETE' });
+  assert.equal(res.status, 200);
+  assert.equal(listCompleted().length, 0);
 });

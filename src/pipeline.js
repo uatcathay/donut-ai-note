@@ -8,6 +8,8 @@ import {
   saveRecording as defaultSaveRecording,
   discardRecording as defaultDiscardRecording,
 } from './recordings.js';
+import { setAnalysisTarget } from './progress.js';
+import { noteCompleted } from './completed.js';
 
 export function decideTitle(userTitle, suggestedTitle, dateStr) {
   const u = (userTitle || '').trim();
@@ -38,6 +40,8 @@ export async function processMeeting(input, deps = {}) {
   const writeFn = deps.writeOutput || defaultWriteOutput;
   const save = deps.saveRecording || defaultSaveRecording;
   const discard = deps.discardRecording || defaultDiscardRecording;
+  const setTarget = deps.setAnalysisTarget || setAnalysisTarget;
+  const noteDone = deps.noteCompleted || noteCompleted;
   const now = deps.now || (() => new Date());
 
   const stamp = formatStamp(now());
@@ -52,6 +56,9 @@ export async function processMeeting(input, deps = {}) {
   const recordingPath = reusing
     ? input.recordingPath
     : await save(input.audioBuffer, recordingName);
+
+  // 分析在背景跑，畫面上同時列著好幾筆——進度得說得出自己跑的是哪一筆
+  setTarget(recordingName);
 
   let analysis;
   let result;
@@ -77,5 +84,8 @@ export async function processMeeting(input, deps = {}) {
 
   // 結果已經寫進 Notion 或 .md，原始音檔沒有留存的必要
   await discard(recordingPath);
-  return { ...result, destination };
+  // 錄音被刪掉之後，「這筆完成了」就沒有檔案能代表它了，得另外記著清單才顯示得出來
+  const done = { ...result, destination };
+  noteDone(recordingName, done);
+  return done;
 }

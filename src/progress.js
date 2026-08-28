@@ -4,6 +4,15 @@
 // 單一使用者的本機工具，同時間只會有一次分析，所以用模組層級的單一狀態即可。
 let current = null;
 
+// 分析改成在背景跑之後，畫面上會同時列著好幾筆錄音，進度得說得出自己跑的是哪一筆。
+// 跟 current 分開存，是因為設定目標的人（pipeline，它知道檔名）與
+// 開始計時的人（分析器，它不知道）不是同一個，而且前者先發生。
+let targetId = null;
+
+export function setAnalysisTarget(id) {
+  targetId = id;
+}
+
 export function startAnalysis(now = Date.now()) {
   current = { startedAt: now, stage: 'upload', retry: null };
 }
@@ -21,6 +30,7 @@ export function noteRetry(reason, attempt, total) {
 
 export function endAnalysis() {
   current = null;
+  targetId = null;   // 不清掉的話會殘留到下一筆，讓錯的那一列顯示成分析中
 }
 
 export function getProgress(now = Date.now()) {
@@ -30,5 +40,6 @@ export function getProgress(now = Date.now()) {
     stage: current.stage,
     elapsedMs: now - current.startedAt,
     retry: current.retry,
+    recordingId: targetId,
   };
 }
