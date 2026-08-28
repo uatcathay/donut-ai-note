@@ -156,32 +156,9 @@
     .linkbtn.is-file { cursor: default; word-break: break-all; }
     .linkbtn.is-file:hover { background: none; }
 
-    /* 處理中：三個方塊階梯式跳動（尺寸為參考來源的 1.5 倍，與 visualizer 的放大倍率一致）。
-       與其他三頁一樣靠上固定，距內容區頂端 200px。 */
-    .ld-stairs {
-      display: flex; gap: 9px; align-items: flex-end;
-      margin-top: 200px; margin-bottom: 20px;
-    }
-    .ld-stairs i {
-      width: 18px; height: 18px; border-radius: 2px;
-      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-      animation: stairs 1.2s ease-in-out infinite;
-    }
-    .ld-stairs i:nth-child(2) { animation-delay: .15s; }
-    .ld-stairs i:nth-child(3) { animation-delay: .3s; }
-    @keyframes stairs {
-      0%, 100% { transform: translateY(0); opacity: .3; }
-      50%      { transform: translateY(-21px); opacity: 1; }
-    }
-    /* 比其他可點文字更深：分析中它是畫面上唯一的主角 */
-    .proc-stage { font-size: 16px; color: var(--fg-emphasis); text-align: center; }
-    /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
-    .proc-detail {
-      margin-top: 20px; font-size: 14px; line-height: 1.7;
-      color: var(--fg-muted); text-align: center; min-height: calc(1.7em * 3);
-    }
-    .proc-detail.is-retrying { color: var(--danger); }
-    /* 待分析清單：刻意低調，它是提醒不是主角 */
+    /* 分析清單：刻意低調，它是提醒不是主角。
+       分析改成在背景跑之後，這裡同時裝著分析中／待分析／已完成三種狀態——
+       原本那個佔滿整頁的「處理中」畫面已移除，進度改成長在對應的那一列裡。 */
     /* 跟著各頁內容走：每頁高度不同，但與上方元素永遠隔 80 */
     .pending { margin-top: 80px; width: calc(100vw - 80px); text-align: left; }
     .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 20px; }
@@ -193,6 +170,9 @@
     .pending-item + .pending-item { margin-top: 12px; }
     /* 視窗窄時左側文字換行完整呈現；動作永遠不被壓縮，不能讓使用者按不到 */
     .pending-label { flex: 1; min-width: 0; }
+    .job-meta { margin-top: 4px; }
+    /* 重試中用警示色：跟「正常等待」要一眼分得出來（沿用原處理頁的處理方式） */
+    .job-retry { margin-top: 4px; color: var(--danger); }
     .pending-actions { display: flex; gap: 8px; flex-shrink: 0; margin: -4px -10px 0 0; }
     .pending-item button {
       padding: 4px 10px; border: none; border-radius: 6px; background: none;
@@ -302,12 +282,6 @@
       <button id="btn-restart" class="linkbtn linkbtn--danger">Restart</button>
     </section>
 
-    <section id="view-processing" class="panel hidden">
-      <div class="ld-stairs" aria-hidden="true"><i></i><i></i><i></i></div>
-      <div class="proc-stage" role="status">Analyzing with Gemini…</div>
-      <div class="proc-detail" id="proc-detail" role="status"></div>
-    </section>
-
     <section id="view-done" class="panel hidden">
       <div id="done-title" class="done-title"></div>
       <div class="preview-box">
@@ -325,14 +299,14 @@
         <div id="preview"></div>
       </div>
       <a class="linkbtn" id="result-link" href="#" target="_blank" rel="noopener"></a>
-      <button id="btn-new" class="linkbtn">New AI Note</button>
+      <button id="btn-back" class="linkbtn">返回</button>
     </section>
 
     <div id="err" class="hidden" role="alert"></div>
     <button id="btn-retry" class="linkbtn hidden">再試一次</button>
 
-    <!-- 分析失敗的錄音留在這裡等你有空再處理，不必當場決定重試或放棄 -->
-    <section id="pending" class="pending hidden" aria-label="待分析的錄音"></section>
+    <!-- 分析中／待分析／已完成 三種狀態都列在這裡；摘要頁不顯示，那頁是拿來讀的 -->
+    <section id="jobs" class="pending hidden" aria-label="分析清單"></section>
   </main>
 
   <dialog id="confirm-restart" class="dialog">

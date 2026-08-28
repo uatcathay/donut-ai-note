@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
 import { processMeeting, validateAnalysis } from '../src/pipeline.js';
+import { listCompleted, clearCompleted } from '../src/completed.js';
 
 const baseDeps = (overrides = {}) => ({
   analyze: async () => ({
@@ -138,4 +139,19 @@ test('validateAnalysis：待辦事項含空項目要擋下', () => {
   assert.throws(
     () => validateAnalysis({ topics: [{ title: 'T', points: ['a'] }], nextSteps: [''], transcript: 't' }),
     AppError);
+});
+
+// 前端只在清單上有東西時才輪詢。若「刪掉錄音」與「記下已完成」之間存在空窗，
+// 輪詢剛好落在那一刻就會停掉，已完成那一列便再也不會自己出現。
+test('成功時先記下已完成再刪錄音，清單不會出現空窗', async () => {
+  clearCompleted();
+  let countWhenDiscarding = null;
+  await processMeeting(
+    { audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '設計評審' },
+    baseDeps({
+      saveRecording: async (buf, name) => `/tmp/${name}`,
+      discardRecording: async () => { countWhenDiscarding = listCompleted().length; },
+    }));
+  assert.equal(countWhenDiscarding, 1, '刪檔當下，已完成那一列必須已經存在');
+  clearCompleted();
 });

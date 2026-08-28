@@ -82,10 +82,12 @@ export async function processMeeting(input, deps = {}) {
     throw err;
   }
 
-  // 結果已經寫進 Notion 或 .md，原始音檔沒有留存的必要
-  await discard(recordingPath);
-  // 錄音被刪掉之後，「這筆完成了」就沒有檔案能代表它了，得另外記著清單才顯示得出來
+  // 順序不能顛倒：錄音一旦刪掉，這筆就沒有任何東西代表它了。
+  // 先記下已完成再刪檔，中間才不會出現「清單是空的」那一瞬間——
+  // 前端只在清單非空時輪詢，輪詢剛好落在那一刻就會停掉，已完成那列便不會自己出現。
   const done = { ...result, destination };
   noteDone(recordingName, done);
+  // 結果已經寫進 Notion 或 .md，原始音檔沒有留存的必要
+  await discard(recordingPath);
   return done;
 }

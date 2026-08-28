@@ -1,10 +1,9 @@
 const $ = (id) => document.getElementById(id);
-const views = ['idle', 'recording', 'processing', 'done'];
+const views = ['idle', 'recording', 'done'];
 // 切換狀態後把焦點移到該頁的主要控制項，否則被按下的按鈕隨即被隱藏、
 // 焦點掉回 <body>，鍵盤使用者每次都要重新 Tab。
-// 待機頁指向標題欄位而非麥克風按鈕：頁面載入與「New AI Note」之後，
-// 自然的下一步都是輸入標題。processing 沒有控制項，刻意不聚焦。
-const FOCUS_TARGET = { idle: 'title', recording: 'btn-stop', done: 'btn-new' };
+// 待機頁指向標題欄位而非麥克風按鈕：頁面載入與返回之後，自然的下一步都是輸入標題。
+const FOCUS_TARGET = { idle: 'title', recording: 'btn-stop', done: 'btn-back' };
 const BARS = 48;
 for (const el of document.querySelectorAll('.wave')) {
   el.innerHTML = '<span class="bar"></span>'.repeat(BARS);
@@ -24,10 +23,6 @@ let timerId = null;
 let audioCtx = null;
 let analyser = null;
 let rafId = null;
-// 錯誤框正在講的那一份錄音。它已經由錯誤框加上「再試一次」代表了，
-// 不該同時又出現在待分析清單裡——同一份錄音顯示成兩筆會讓人以為錄了兩次。
-// 宣告在這裡而非 showError 旁邊：refreshPending 會讀它，位置在前面。
-let failedRecordingId = null;
 
 function fmt(s) {
   const m = String(Math.floor(s / 60)).padStart(2, '0');
@@ -240,129 +235,151 @@ function describeProgress(p) {
   return { lines, retrying: true };
 }
 
-let progressTimer = null;
+let jobsTimer = null;
 
-function stopProgressPolling() {
-  clearInterval(progressTimer);
-  progressTimer = null;
-  const el = $('proc-detail');
-  el.textContent = '';
-  el.classList.remove('is-retrying');
+// 只在清單上有東西時才輪詢：清單空了就沒有任何會自己變動的狀態，
+// 使用者的動作（停止錄音、立即分析、移除）本來就會各自觸發一次刷新。
+function scheduleJobsPolling(hasJobs) {
+  if (hasJobs && !jobsTimer) jobsTimer = setInterval(refreshJobs, 2000);
+  if (!hasJobs && jobsTimer) { clearInterval(jobsTimer); jobsTimer = null; }
 }
 
-function startProgressPolling() {
-  stopProgressPolling();
-  const tick = async () => {
-    try {
-      const p = await (await fetch('/api/progress')).json();
-      const { lines, retrying } = describeProgress(p);
-      const el = $('proc-detail');
-      el.textContent = '';
-      for (const line of lines) {
-        const div = document.createElement('div');
-        div.textContent = line;
-        el.append(div);
-      }
-      el.classList.toggle('is-retrying', retrying);
-    } catch { /* 進度查不到不該影響分析本身 */ }
-  };
-  tick();
-  progressTimer = setInterval(tick, 2000);
-}
-
-// 分析失敗的錄音不會消失，它們留在伺服器上等你有空。當場沒空重試就先錄下一場，
-// 這份清單關掉視窗、關機都還在。
 const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 
-// 正在重試的錄音先從清單移除，否則它留在原地、看起來像沒反應。
-// 失敗的話伺服器那份檔案還在，下次刷新就會自己回來。
-const retryingIds = new Set();
+// 立即分析送出後、伺服器還沒把狀態換成「分析中」之前有個空窗，
+// 那一列會短暫停在「待分析」，看起來像沒反應。先自己標成分析中撐過去。
+const startingIds = new Set();
 
-async function refreshPending() {
-  const box = $('pending');
+function jobMeta(job) {
+  if (job.state === 'done') return '已完成';
+  if (job.state === 'analyzing' || startingIds.has(job.id)) {
+    const stage = STAGE_TEXT[job.stage] || '分析';
+    const elapsed = job.elapsedMs == null ? '' : `（已等 ${formatElapsed(job.elapsedMs)}）`;
+    return `${fmtMB(job.sizeBytes)} / ${stage}中${elapsed}`;
+  }
+  return `${fmtMB(job.sizeBytes)} / 待分析`;
+}
+
+function addLine(parent, text, className) {
+  const div = document.createElement('div');
+  if (className) div.className = className;
+  div.textContent = text;
+  parent.append(div);
+}
+
+function addAction(parent, text, onclick) {
+  const b = document.createElement('button');
+  b.textContent = text;
+  b.onclick = onclick;
+  parent.append(b);
+}
+
+async function refreshJobs() {
+  const box = $('jobs');
   let items = [];
   try {
-    items = (await (await fetch('/api/pending')).json()).items || [];
-  } catch { /* 待分析清單拿不到不該影響錄音 */ }
-  items = items.filter((i) => !retryingIds.has(i.id) && i.id !== failedRecordingId);
-  box.classList.toggle('hidden', items.length === 0);
-  if (items.length === 0) { box.textContent = ''; return; }
+    items = (await (await fetch('/api/jobs')).json()).items || [];
+  } catch { /* 清單拿不到不該影響錄音 */ }
 
+  scheduleJobsPolling(items.length > 0);
+  box.classList.toggle('hidden', items.length === 0);
   box.textContent = '';
+  if (items.length === 0) return;
+
   const title = document.createElement('div');
   title.className = 'pending-title';
-  title.textContent = `待分析（${items.length}）`;
+  title.textContent = `分析清單（${items.length}）`;
   box.append(title);
 
-  for (const item of items) {
+  for (const job of items) {
     const row = document.createElement('div');
     row.className = 'pending-item';
 
-    const label = document.createElement('span');
+    const label = document.createElement('div');
     label.className = 'pending-label';
-    // 不寫「再試一次」——右邊就有重試按鈕，重複說一次只是佔位置
-    label.textContent = `${item.label} / ${fmtMB(item.sizeBytes)} / 分析失敗`;
+    addLine(label, job.state === 'done' ? job.title : job.label);
+    addLine(label, jobMeta(job), 'job-meta');
+    if (job.retry) {
+      addLine(label, `${RETRY_TEXT[job.retry.reason] || '暫時性錯誤'}・`
+        + `第 ${job.retry.attempt}/${job.retry.total} 次重試`, 'job-retry');
+    }
     row.append(label);
 
     const actions = document.createElement('div');
     actions.className = 'pending-actions';
-
-    const retry = document.createElement('button');
-    retry.textContent = '重試';
-    retry.onclick = () => retryPending(item);
-    actions.append(retry);
-
-    const del = document.createElement('button');
-    del.textContent = '刪除';
-    del.onclick = async () => {
-      await fetch(`/api/pending/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-      refreshPending();
-    };
-    actions.append(del);
-
+    if (job.state === 'done') {
+      addAction(actions, '查看摘要', () => openSummary(job.id));
+      // 「移除」而不是「刪除」：這一列只是通知，Notion 上的筆記不受影響。
+      // 待分析那列的「刪除」會永久丟掉錄音，兩者後果差很多，用詞必須分開。
+      addAction(actions, '移除', () => removeJob(job.id));
+    } else if (job.state === 'pending' && !startingIds.has(job.id)) {
+      addAction(actions, '立即分析', () => analyzeNow(job.id));
+      addAction(actions, '刪除', () => discardJob(job.id));
+    }
     row.append(actions);
     box.append(row);
   }
 }
 
-async function retryPending(item) {
-  retryingIds.add(item.id);
-  refreshPending();   // 立刻讓該筆消失，使用者才知道重試已經開始
-  clearError();
-  show('processing');
-  startProgressPolling();
+async function analyzeNow(id) {
+  startingIds.add(id);
+  refreshJobs();
   try {
-    const res = await fetch(`/api/pending/${encodeURIComponent(item.id)}/retry`, { method: 'POST' });
+    const res = await fetch(`/api/pending/${encodeURIComponent(id)}/retry`, { method: 'POST' });
     const body = await res.json();
-    if (!body.ok) throw new Error(body.message || '處理失敗');
-    renderDone(body);
+    if (!body.ok) showError(body.message || '無法開始分析');
   } catch (e) {
-    showError(`處理失敗：${describeClientFailure(e)}`, { recordingId: item.id });
+    showError(describeClientFailure(e));
   } finally {
-    retryingIds.delete(item.id);
-    stopProgressPolling();
-    refreshPending();   // 仍然失敗的話，伺服器上的檔案還在，這筆會重新出現
+    startingIds.delete(id);
+    refreshJobs();
   }
 }
 
+async function discardJob(id) {
+  await fetch(`/api/pending/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  refreshJobs();
+}
+
+async function removeJob(id) {
+  await fetch(`/api/completed/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  refreshJobs();
+}
+
+// 看完就把那一列收掉——它的用途是「這個好了，去看一下」，看過就沒有存在的必要。
+// 筆記的永久位置是 Notion 或桌面的 .md，這一列只是通知。
+let viewingId = null;
+
+async function openSummary(id) {
+  try {
+    const res = await fetch(`/api/completed/${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error('找不到這份摘要');
+    viewingId = id;
+    renderDone(await res.json());
+  } catch (e) {
+    showError(describeClientFailure(e));
+    refreshJobs();
+  }
+}
+
+// 伺服器收下錄音就回應，分析自己在背景跑，所以這裡直接回待機頁——
+// 分析一場長會議要好幾分鐘，而使用者往往正要開下一場。
 async function sendForProcessing() {
-  show('processing');
-  startProgressPolling();
   const fd = new FormData();
   fd.set('title', $('title').value || '');
   fd.set('audio', lastBlob, 'recording.webm');
   try {
     const res = await fetch('/api/process', { method: 'POST', body: fd });
     const body = await res.json();
-    if (!body.ok) throw Object.assign(new Error(body.message || '處理失敗'),
-      { recordingId: body.recordingId });
-    renderDone(body);
+    if (!body.ok) throw new Error(body.message || '上傳失敗');
+    lastBlob = null;
+    $('title').value = '';
+    show('idle');
   } catch (e) {
-    showError(`處理失敗：${describeClientFailure(e)}`,
-      { recordingId: e.recordingId || null, blobRetry: true });
+    // 這裡的失敗是「錄音沒送到伺服器」，跟分析失敗不同——後者由清單那一列表達
+    showError(`上傳失敗：${describeClientFailure(e)}`, { blobRetry: true });
   } finally {
-    stopProgressPolling();
-    refreshPending();
+    refreshJobs();
   }
 }
 
@@ -396,19 +413,18 @@ function renderDone(body) {
   show('done');
 }
 
-// recordingId：錄音已落地，重試就重試那個檔案（不必重傳）。
-// blobRetry：還沒落地就失敗（例如請求根本沒送到伺服器），只能用記憶體裡的錄音重傳。
-function showError(msg, { recordingId = null, blobRetry = false } = {}) {
-  failedRecordingId = recordingId;
+// 這裡只剩「當下就知道失敗」的錯誤：麥克風權限、錄音送不出去。
+// 分析失敗不走這裡——那時候使用者早就離開了，改由清單那一列表達。
+// blobRetry：錄音還在記憶體裡，可以重傳一次。
+function showError(msg, { blobRetry = false } = {}) {
   const err = $('err');
   err.textContent = msg;
   err.classList.remove('hidden');
-  $('btn-retry').classList.toggle('hidden', !(recordingId || (blobRetry && lastBlob)));
+  $('btn-retry').classList.toggle('hidden', !(blobRetry && lastBlob));
   show('idle');   // 回到可操作狀態
 }
 
 function clearError() {
-  failedRecordingId = null;
   $('err').classList.add('hidden');
   $('btn-retry').classList.add('hidden');
 }
@@ -435,13 +451,14 @@ $('btn-restart').onclick = restartRecording;
 $('btn-quota-ok').onclick = () => $('quota-notice').close();
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
-$('btn-new').onclick = () => { clearError(); lastBlob = null; $('title').value = ''; show('idle'); };
-// 有存檔就重試那個檔案——重傳一份會被當成全新的錄音再存一次，清單就長出重複項目。
-// 沒存檔（請求沒送到伺服器）才退回用記憶體裡的錄音重傳。
-$('btn-retry').onclick = () => {
-  if (failedRecordingId) return retryPending({ id: failedRecordingId });
-  if (lastBlob) { clearError(); sendForProcessing(); }
+// 返回＝看完了：把那一列收掉再回待機頁
+$('btn-back').onclick = async () => {
+  if (viewingId) await removeJob(viewingId);
+  viewingId = null;
+  clearError();
+  show('idle');
 };
+$('btn-retry').onclick = () => { if (lastBlob) { clearError(); sendForProcessing(); } };
 
 show('idle');
-refreshPending();   // 開啟視窗就看得到還有哪些錄音沒分析
+refreshJobs();   // 開啟視窗就看得到分析清單的現況
