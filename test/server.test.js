@@ -207,6 +207,7 @@ test('POST /api/process 錄音一落地就回應，不等分析跑完', async (t
   assert.ok(Date.now() - t0 < 1000, '不該等分析完成才回應');
   assert.match(body.id, /^錄音_.+設計評審\./, '要回傳錄音 id，清單才標得出是哪一筆');
   assert.equal(saved.length, 1, '回應之前錄音就該落地');
+  assert.equal(body.started, true, '分析真的開始了，前端才跳到處理中那頁');
 });
 
 test('POST /api/process 在已有分析進行中時只存檔，不動手分析', async (t) => {
@@ -223,6 +224,8 @@ test('POST /api/process 在已有分析進行中時只存檔，不動手分析',
   assert.equal(body.ok, true);
   assert.equal(saved.length, 1, '錄音一定要留下來');
   assert.equal(analyzed, 0, '兩個分析並行會搶進度狀態，也讓 503 機率加倍');
+  assert.equal(body.started, false,
+    '沒開始分析就別跳到處理中那頁——那頁會顯示成正在跑，但其實沒有');
 });
 
 // ── 清單合併三種狀態 ─────────────────────────────────────

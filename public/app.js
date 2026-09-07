@@ -1,15 +1,20 @@
 const $ = (id) => document.getElementById(id);
-const views = ['idle', 'recording', 'done'];
+const views = ['idle', 'recording', 'processing', 'done'];
 // 切換狀態後把焦點移到該頁的主要控制項，否則被按下的按鈕隨即被隱藏、
 // 焦點掉回 <body>，鍵盤使用者每次都要重新 Tab。
-// 待機頁指向標題欄位而非麥克風按鈕：頁面載入與返回之後，自然的下一步都是輸入標題。
-const FOCUS_TARGET = { idle: 'title', recording: 'btn-stop', done: 'btn-back' };
+// 待機頁指向標題欄位而非麥克風按鈕：頁面載入與 New AI Note 之後，自然的下一步都是輸入標題。
+const FOCUS_TARGET = { idle: 'title', recording: 'btn-stop', processing: 'btn-leave', done: 'btn-new' };
 const BARS = 48;
 for (const el of document.querySelectorAll('.wave')) {
   el.innerHTML = '<span class="bar"></span>'.repeat(BARS);
 }
+let currentView = 'idle';
+
 function show(view) {
+  currentView = view;
   for (const v of views) $(`view-${v}`).classList.toggle('hidden', v !== view);
+  // 分析清單只出現在待機頁：錄音頁與摘要頁都是專心做一件事的地方，列一串在下面只是干擾
+  refreshJobsVisibility();
   const focusId = FOCUS_TARGET[view];
   if (focusId) $(focusId).focus();
 }
@@ -236,6 +241,12 @@ function describeProgress(p) {
 }
 
 let jobsTimer = null;
+let jobCount = 0;
+
+// 清單只在待機頁露出。其他頁都在專心做一件事：錄音、看它跑、讀摘要。
+function refreshJobsVisibility() {
+  $('jobs').classList.toggle('hidden', currentView !== 'idle' || jobCount === 0);
+}
 
 // 只在清單上有東西時才輪詢：清單空了就沒有任何會自己變動的狀態，
 // 使用者的動作（停止錄音、立即分析、移除）本來就會各自觸發一次刷新。
@@ -281,8 +292,9 @@ async function refreshJobs() {
     items = (await (await fetch('/api/jobs')).json()).items || [];
   } catch { /* 清單拿不到不該影響錄音 */ }
 
+  jobCount = items.length;
   scheduleJobsPolling(items.length > 0);
-  box.classList.toggle('hidden', items.length === 0);
+  refreshJobsVisibility();
   box.textContent = '';
   if (items.length === 0) return;
 
@@ -307,7 +319,9 @@ async function refreshJobs() {
 
     const actions = document.createElement('div');
     actions.className = 'pending-actions';
-    if (job.state === 'done') {
+    if (job.state === 'analyzing') {
+      addAction(actions, '查看進度', () => watchAnalysis(job.id));
+    } else if (job.state === 'done') {
       addAction(actions, '查看摘要', () => openSummary(job.id));
       // 「移除」而不是「刪除」：這一列只是通知，Notion 上的筆記不受影響。
       // 待分析那列的「刪除」會永久丟掉錄音，兩者後果差很多，用詞必須分開。
@@ -346,6 +360,81 @@ async function removeJob(id) {
   refreshJobs();
 }
 
+// 「處理中」那頁是可以進出的：不急的時候留在這裡看它跑完，趕時間就按出口去錄下一場。
+// 從清單上「分析中」那列點「查看進度」也回到這裡。
+let watchingId = null;
+let watchTimer = null;
+let watchStartedAt = 0;
+let sawAnalyzing = false;
+
+function stopWatching() {
+  clearInterval(watchTimer);
+  watchTimer = null;
+  watchingId = null;
+  const el = $('proc-detail');
+  el.textContent = '';
+  el.classList.remove('is-retrying');
+}
+
+function renderProgressLines(p) {
+  const { lines, retrying } = describeProgress(p);
+  const el = $('proc-detail');
+  el.textContent = '';
+  for (const line of lines) addLine(el, line);
+  el.classList.toggle('is-retrying', retrying);
+}
+
+// 分析結束的那一刻要分辨「成功」還是「失敗」：成功的那筆會出現在已完成，
+// 失敗的則以待分析留在磁碟上。但「還沒開始跑」看起來也是待分析，
+// 所以要先確認真的看過它在跑（或已等超過寬限時間）才敢判定失敗。
+const WATCH_GRACE_MS = 5000;
+
+async function watchTick() {
+  const id = watchingId;
+  if (!id) return;
+  let p;
+  try {
+    p = await (await fetch('/api/progress')).json();
+  } catch { return; }   // 查不到就下一輪再問，不要誤判成結束
+
+  if (p.active && p.recordingId === id) {
+    sawAnalyzing = true;
+    renderProgressLines(p);
+    return;
+  }
+  if (!sawAnalyzing && Date.now() - watchStartedAt < WATCH_GRACE_MS) return;
+
+  let job;
+  try {
+    const items = (await (await fetch('/api/jobs')).json()).items || [];
+    job = items.find((i) => i.id === id);
+  } catch { return; }
+
+  if (job?.state === 'done') {
+    stopWatching();
+    openSummary(id);   // 人就在這裡等它，直接把摘要顯示出來
+    return;
+  }
+  if (job?.state === 'analyzing') return;   // 又被別的路徑接手了，繼續看
+  stopWatching();
+  // 失敗或那筆已被刪掉：回待機頁，清單上會有它（附上原因）等你按「立即分析」
+  if (job) showError('分析未成功。錄音已保留在分析清單，可按「立即分析」重試。');
+  else show('idle');
+  refreshJobs();
+}
+
+function watchAnalysis(id) {
+  clearError();
+  watchingId = id;
+  sawAnalyzing = false;
+  watchStartedAt = Date.now();
+  $('proc-detail').textContent = '';
+  show('processing');
+  clearInterval(watchTimer);
+  watchTimer = setInterval(watchTick, 2000);
+  watchTick();
+}
+
 // 看完就把那一列收掉——它的用途是「這個好了，去看一下」，看過就沒有存在的必要。
 // 筆記的永久位置是 Notion 或桌面的 .md，這一列只是通知。
 let viewingId = null;
@@ -374,7 +463,10 @@ async function sendForProcessing() {
     if (!body.ok) throw new Error(body.message || '上傳失敗');
     lastBlob = null;
     $('title').value = '';
-    show('idle');
+    // 沒有真的開始分析（已有另一個在跑）就別去處理中那頁——
+    // 那頁會顯示成正在跑，但其實那筆還在等你按「立即分析」
+    if (body.started) watchAnalysis(body.id);
+    else show('idle');
   } catch (e) {
     // 這裡的失敗是「錄音沒送到伺服器」，跟分析失敗不同——後者由清單那一列表達
     showError(`上傳失敗：${describeClientFailure(e)}`, { blobRetry: true });
@@ -451,8 +543,10 @@ $('btn-restart').onclick = restartRecording;
 $('btn-quota-ok').onclick = () => $('quota-notice').close();
 $('btn-cancel-restart').onclick = () => $('confirm-restart').close();
 $('btn-confirm-restart').onclick = () => { $('confirm-restart').close(); discardRecording(); };
-// 返回＝看完了：把那一列收掉再回待機頁
-$('btn-back').onclick = async () => {
+// 出口：分析繼續在背景跑，那一列會留在清單上
+$('btn-leave').onclick = () => { stopWatching(); show('idle'); refreshJobs(); };
+// 看完了：把那一列收掉再回待機頁
+$('btn-new').onclick = async () => {
   if (viewingId) await removeJob(viewingId);
   viewingId = null;
   clearError();

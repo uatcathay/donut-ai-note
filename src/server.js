@@ -126,10 +126,12 @@ export function createApp(deps = {}) {
       const userTitle = req.body.title || '';
       const name = buildRecordingName(userTitle, formatStamp(new Date()), req.file.mimetype);
       const filePath = await save(req.file.buffer, name);
-      res.json({ ok: true, id: name });
+      // 已經有分析在跑就先擱著，那一筆會以「待分析」留在清單上等使用者按「立即分析」。
+      // started 要讓前端知道：沒開始就別跳到處理中那頁，那頁會顯示成正在跑但其實沒有。
+      const started = !isAnalyzing();
+      res.json({ ok: true, id: name, started });
 
-      // 已經有分析在跑就先擱著，那一筆會以「待分析」留在清單上等使用者按「立即分析」
-      if (!isAnalyzing()) {
+      if (started) {
         analyzeInBackground({
           audioBuffer: req.file.buffer,
           mimeType: req.file.mimetype,

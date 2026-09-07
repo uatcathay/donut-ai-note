@@ -156,9 +156,37 @@
     .linkbtn.is-file { cursor: default; word-break: break-all; }
     .linkbtn.is-file:hover { background: none; }
 
-    /* 分析清單：刻意低調，它是提醒不是主角。
-       分析改成在背景跑之後，這裡同時裝著分析中／待分析／已完成三種狀態——
-       原本那個佔滿整頁的「處理中」畫面已移除，進度改成長在對應的那一列裡。 */
+    /* 處理中：三個方塊階梯式跳動（尺寸為參考來源的 1.5 倍，與 visualizer 的放大倍率一致）。
+       與其他三頁一樣靠上固定，距內容區頂端 200px。 */
+    .ld-stairs {
+      display: flex; gap: 9px; align-items: flex-end;
+      margin-top: 200px; margin-bottom: 20px;
+    }
+    .ld-stairs i {
+      width: 18px; height: 18px; border-radius: 2px;
+      background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
+      animation: stairs 1.2s ease-in-out infinite;
+    }
+    .ld-stairs i:nth-child(2) { animation-delay: .15s; }
+    .ld-stairs i:nth-child(3) { animation-delay: .3s; }
+    @keyframes stairs {
+      0%, 100% { transform: translateY(0); opacity: .3; }
+      50%      { transform: translateY(-21px); opacity: 1; }
+    }
+    /* 比其他可點文字更深：分析中它是畫面上唯一的主角 */
+    .proc-stage { font-size: 16px; color: var(--fg-emphasis); text-align: center; }
+    /* 等待期間的唯一資訊來源：沒有它，「重試中」和「已經死了」長得一模一樣 */
+    .proc-detail {
+      margin-top: 20px; font-size: 14px; line-height: 1.7;
+      color: var(--fg-muted); text-align: center; min-height: calc(1.7em * 3);
+    }
+    .proc-detail.is-retrying { color: var(--danger); }
+    /* 出口：不急的時候可以留在這頁看它跑完，趕時間就離開去錄下一場 */
+    #btn-leave { margin-top: 20px; }
+
+    /* 分析清單：刻意低調，它是提醒不是主角。只出現在待機頁——
+       錄音頁與摘要頁都是專心做一件事的地方，列一串在下面只是干擾。
+       同時裝著分析中／待分析／已完成三種狀態，點分析中那列可回到處理中那頁。 */
     /* 跟著各頁內容走：每頁高度不同，但與上方元素永遠隔 80 */
     .pending { margin-top: 80px; width: calc(100vw - 80px); text-align: left; }
     .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 20px; }
@@ -282,6 +310,13 @@
       <button id="btn-restart" class="linkbtn linkbtn--danger">Restart</button>
     </section>
 
+    <section id="view-processing" class="panel hidden">
+      <div class="ld-stairs" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="proc-stage" role="status">Analyzing with Gemini…</div>
+      <div class="proc-detail" id="proc-detail" role="status"></div>
+      <button id="btn-leave" class="linkbtn">先去錄下一場</button>
+    </section>
+
     <section id="view-done" class="panel hidden">
       <div id="done-title" class="done-title"></div>
       <div class="preview-box">
@@ -299,7 +334,7 @@
         <div id="preview"></div>
       </div>
       <a class="linkbtn" id="result-link" href="#" target="_blank" rel="noopener"></a>
-      <button id="btn-back" class="linkbtn">返回</button>
+      <button id="btn-new" class="linkbtn">New AI Note</button>
     </section>
 
     <div id="err" class="hidden" role="alert"></div>
