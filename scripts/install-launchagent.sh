@@ -9,7 +9,7 @@ set -euo pipefail
 LABEL="com.local.browser-ai-note"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PORT="${PORT:-3000}"
+PORT="${PORT:-3737}"
 LOG="/tmp/browser-ai-note.log"
 
 usage() {

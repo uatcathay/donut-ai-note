@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { checkConfig, createApp } from '../src/server.js';
+import { checkConfig, createApp, listenLoopback, LOOPBACKS } from '../src/server.js';
 import { noteQuotaExhausted, clearQuota } from '../src/quota.js';
 import { noteCompleted, listCompleted, clearCompleted } from '../src/completed.js';
 
@@ -293,4 +293,37 @@ test('DELETE /api/completed/:id 把那一列移除，不動 Notion 上的筆記'
   const res = await fetch(`http://localhost:${port}/api/completed/a.webm`, { method: 'DELETE' });
   assert.equal(res.status, 200);
   assert.equal(listCompleted().length, 0);
+});
+
+// localhost 在 macOS 同時解析成 ::1 與 127.0.0.1，而且優先走 IPv6。
+// 只綁 IPv4 的話，另一個綁通配位址的開發伺服器會吃下 ::1，於是 localhost:<port>
+// 靜默地變成它——兩邊都啟動成功、都沒報錯，是最難察覺的一種衝突（實際發生過）。
+test('綁定兩個 loopback，後來者才會拿到明確的「埠號已被使用」', () => {
+  const calls = [];
+  const fakeApp = { listen: (port, host, cb) => { calls.push([port, host]); cb?.(); return { on() {} }; } };
+  const servers = listenLoopback(fakeApp, 3737);
+  assert.deepEqual(calls, [[3737, '127.0.0.1'], [3737, '::1']]);
+  assert.equal(servers.length, 2);
+});
+
+test('LOOPBACKS 只含 loopback 位址，不含通配——通配會讓同網段的人連得進來', () => {
+  assert.deepEqual(LOOPBACKS, ['127.0.0.1', '::1']);
+  assert.ok(!LOOPBACKS.includes('0.0.0.0') && !LOOPBACKS.includes('::'));
+});
+
+// IPv6 被關掉的機器上綁 ::1 會失敗，但 IPv4 那個還能用，不該讓整個工具起不來
+test('其中一個位址綁不起來時只記錄，不讓程序掛掉', () => {
+  const handlers = [];
+  const fakeApp = {
+    listen: (port, host, cb) => {
+      cb?.();
+      return { on: (ev, fn) => { if (ev === 'error') handlers.push({ host, fn }); } };
+    },
+  };
+  const logged = [];
+  listenLoopback(fakeApp, 3737, (m) => logged.push(m));
+  assert.equal(handlers.length, 2, '每個位址都要掛上 error 處理');
+  handlers[1].fn(new Error('EAFNOSUPPORT'));
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /::1/);
 });

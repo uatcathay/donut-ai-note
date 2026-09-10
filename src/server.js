@@ -154,16 +154,38 @@ export function createApp(deps = {}) {
   return app;
 }
 
+// 伺服器改為登入常駐後，曝露時間從「App 視窗開著的幾分鐘」變成「開機後無限期」，
+// 且無任何身分驗證；只綁 loopback，避免同網段的人打到 /api/process
+// 盜用 Gemini 額度、寫入使用者的 Notion。
+//
+// 兩個 loopback 都要綁：localhost 在 macOS 同時解析成 ::1 與 127.0.0.1，而且優先走
+// IPv6。只綁 IPv4 的話，另一個綁通配位址的開發伺服器（Next.js 預設就是）會吃下 ::1，
+// 於是 localhost:<port> 靜默地變成它——兩邊都啟動成功、都沒報錯，點 Dock 圖示卻開到
+// 別人的頁面。這實際發生過。兩個都佔住，後來者才會拿到明確的「埠號已被使用」。
+export const LOOPBACKS = ['127.0.0.1', '::1'];
+
+export function listenLoopback(app, port, onError = warn) {
+  return LOOPBACKS.map((host) => {
+    const server = app.listen(port, host);
+    // IPv6 被關掉的機器上綁 ::1 會失敗，但 IPv4 那個還能用，不該讓整個工具起不來
+    server.on('error', (e) => onError(`[啟動] 無法在 ${host}:${port} 監聽（${e.message}）`));
+    return server;
+  });
+}
+
+// 3000 是 Node/Next/React 的預設值，常駐的工具長期佔著它，每開一個新專案就會撞一次。
+// 3737 不是任何常見框架的預設值。
+const DEFAULT_PORT = 3737;
+
 export function start() {
   // Node 不會自動載入 .env，這裡在正式啟動時讀入專案根目錄的 .env
   const envPath = path.join(__dirname, '..', '.env');
   if (existsSync(envPath)) process.loadEnvFile(envPath);
   for (const w of checkConfig(process.env)) warn('[設定提醒] ' + w);
   const app = createApp();
-  const port = process.env.PORT || 3000;
-  // 伺服器改為登入常駐後，曝露時間從「App 視窗開著的幾分鐘」變成「開機後無限期」，
-  // 且無任何身分驗證；綁定 loopback 避免同網段的人打到 /api/process 盜用 Gemini 額度、寫入使用者的 Notion。
-  app.listen(port, '127.0.0.1', () => log(`會議記錄工具運作中： http://localhost:${port}`));
+  const port = process.env.PORT || DEFAULT_PORT;
+  listenLoopback(app, port);
+  log(`會議記錄工具運作中： http://localhost:${port}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) start();

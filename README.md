@@ -27,7 +27,7 @@ cp .env.example .env
 ## 三、使用
 
 1. 首次安裝：`bash scripts/install-launchagent.sh`（伺服器會在每次登入時自動於背景啟動）。
-2. 接著在 Chrome 開啟 http://localhost:3000/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
+2. 接著在 Chrome 開啟 http://localhost:3737/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
    完成後 `~/Applications/Chrome Apps.localized/Browser AI Note.app` 即為正式 App，可拖到 Dock。
 3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
 4. 關閉視窗只是關視窗，背景伺服器持續運作，下次點圖示即可瞬開。
@@ -50,7 +50,7 @@ cp .env.example .env
   launchctl bootout gui/$UID/com.local.browser-ai-note
   rm ~/Library/LaunchAgents/com.local.browser-ai-note.plist
   ```
-- **PORT 設定不一致**：`PORT` 是在安裝當下從執行 shell 的環境變數寫進 plist 的。若安裝時的 shell 有另外 export 過 `PORT`，常駐服務會改聽那個埠，但已安裝的 Chrome shim 仍指向 `localhost:3000`——症狀是點圖示出現連線錯誤。安裝前先確認 `echo $PORT` 是空的（或等於 3000），或重新以未覆寫 `PORT` 的 shell 執行安裝腳本。
+- **PORT 設定不一致**：`PORT` 是在安裝當下從執行 shell 的環境變數寫進 plist 的。若安裝時的 shell 有另外 export 過 `PORT`，常駐服務會改聽那個埠，但已安裝的 Chrome shim 仍指向舊的埠號——症狀是點圖示出現連線錯誤。安裝前先確認 `echo $PORT` 是空的（或等於 3737），或重新以未覆寫 `PORT` 的 shell 執行安裝腳本。
 
 ## 五、測試
 
