@@ -1,5 +1,5 @@
 import { AppError } from '../errors.js';
-import { startAnalysis, setStage, noteRetry, endAnalysis } from '../progress.js';
+import { setStage, noteRetry } from '../progress.js';
 import { log as writeLog } from '../log.js';
 import { noteQuotaExhausted, clearQuota } from '../quota.js';
 
@@ -239,7 +239,6 @@ async function callGemini(prompt, audioBuffer, mimeType) {
 
   const timeoutMs = stepTimeoutMs(audioBuffer.length);
 
-  startAnalysis();
   const t0 = Date.now();
   let tUploaded = t0;
   let tReady = t0;
@@ -295,7 +294,6 @@ async function callGemini(prompt, audioBuffer, mimeType) {
   } finally {
     // 不論成功或失敗都刪：失敗後的重試本來就會重新上傳一份。
     await discardUploaded(ai, uploadedName);
-    endAnalysis();
   }
 }
 

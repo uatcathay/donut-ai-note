@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
 import { processMeeting, validateAnalysis } from '../src/pipeline.js';
 import { listCompleted, clearCompleted } from '../src/completed.js';
+import { getProgress, endAnalysis } from '../src/progress.js';
 
 const baseDeps = (overrides = {}) => ({
   analyze: async () => ({
@@ -154,4 +155,39 @@ test('成功時先記下已完成再刪錄音，清單不會出現空窗', async
     }));
   assert.equal(countWhenDiscarding, 1, '刪檔當下，已完成那一列必須已經存在');
   clearCompleted();
+});
+
+// 實際遇到的 bug：進度原本在 Gemini 回應的當下就結束，但那時候筆記還沒寫進 Notion、
+// 也還沒登記已完成。前端看到「不在跑了」而那筆還躺在磁碟上，就判定成失敗——
+// 畫面同時出現紅色「分析未成功」和清單上的「已完成」。
+// 進度必須涵蓋整個工作，不是只有 Gemini 那一段。
+test('進度要撐到筆記寫完、已完成登記好為止', async () => {
+  clearCompleted();
+  endAnalysis();
+  const seen = [];
+  await processMeeting(
+    { audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '設計評審' },
+    baseDeps({
+      analyze: async () => {
+        seen.push(['analyze', getProgress().active]);
+        return { suggestedTitle: 'A', topics: [{ title: 'T', points: ['k'] }], nextSteps: [], transcript: 't' };
+      },
+      writeOutput: async () => {
+        seen.push(['write', getProgress().active]);
+        return { type: 'markdown', filePath: '/tmp/a.md' };
+      },
+      discardRecording: async () => { seen.push(['discard', getProgress().active]); },
+    }));
+  assert.deepEqual(seen, [['analyze', true], ['write', true], ['discard', true]],
+    '寫出筆記與刪檔的期間，進度都還要是 active');
+  assert.equal(getProgress().active, false, '全部做完才結束');
+  clearCompleted();
+});
+
+test('分析失敗時進度一樣要結束，否則之後所有分析都會被當成忙碌而擋下', async () => {
+  endAnalysis();
+  await assert.rejects(() => processMeeting(
+    { audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '' },
+    baseDeps({ analyze: async () => { throw new AppError('analyze', '壞了'); } })));
+  assert.equal(getProgress().active, false);
 });

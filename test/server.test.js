@@ -327,3 +327,20 @@ test('其中一個位址綁不起來時只記錄，不讓程序掛掉', () => {
   assert.equal(logged.length, 1);
   assert.match(logged[0], /::1/);
 });
+
+// 登記已完成到刪掉錄音之間，同一筆同時存在於已完成清單與磁碟上。
+// 不去重的話畫面會出現兩列同名的東西，一列已完成、一列待分析。
+test('GET /api/jobs：已完成的那筆不會同時以待分析再列一次', async (t) => {
+  clearCompleted();
+  noteCompleted('a.webm', { title: '甲', topics: [], nextSteps: [], transcript: 't', destination: {} });
+  const app = createApp({
+    processMeeting: async () => ({}),
+    listRecordings: async () => [{ id: 'a.webm', label: '甲', sizeBytes: 100 }],
+    getProgress: () => ({ active: false }),
+  });
+  const server = app.listen(0);
+  t.after(() => { server.close(); clearCompleted(); });
+  const { items } = await (await fetch(`http://localhost:${server.address().port}/api/jobs`)).json();
+  assert.equal(items.length, 1);
+  assert.equal(items[0].state, 'done');
+});

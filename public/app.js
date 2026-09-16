@@ -222,7 +222,7 @@ function describeClientFailure(e) {
 
 // 分析可能跑好幾分鐘，而畫面上只有一個轉圈。伺服器知道自己在上傳、在分析、
 // 還是在重試——問出來顯示給使用者看，等待才不會被誤認成當機。
-const STAGE_TEXT = { upload: '上傳音檔', analyze: '分析錄音' };
+const STAGE_TEXT = { upload: '上傳音檔', analyze: '分析錄音', write: '寫入筆記' };
 const RETRY_TEXT = { busy: 'Gemini 忙線中', timeout: 'Gemini 沒有回應' };
 
 function formatElapsed(ms) {

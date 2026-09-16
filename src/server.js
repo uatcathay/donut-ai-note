@@ -91,12 +91,17 @@ export function createApp(deps = {}) {
   // 合成一支給前端，省得它自己對三支端點的結果做時序對齊。
   app.get('/api/jobs', async (_req, res) => {
     const p = progress();
+    const done = listCompleted().map((c) => ({ ...c, state: 'done' }));
+    const doneIds = new Set(done.map((c) => c.id));
     const recordings = await list();
-    const items = recordings.map((r) => (p.active && p.recordingId === r.id
-      ? { ...r, state: 'analyzing', stage: p.stage, elapsedMs: p.elapsedMs, retry: p.retry }
-      : { ...r, state: 'pending' }));
+    const items = recordings
+      // 登記已完成到刪檔之間，同一筆會同時存在於已完成與磁碟上，不去重就會列出兩列
+      .filter((r) => !doneIds.has(r.id))
+      .map((r) => (p.active && p.recordingId === r.id
+        ? { ...r, state: 'analyzing', stage: p.stage, elapsedMs: p.elapsedMs, retry: p.retry }
+        : { ...r, state: 'pending' }));
     // 已完成的排在最前面：它是剛發生的事，而且要你看一眼才會消失
-    res.json({ items: [...listCompleted().map((c) => ({ ...c, state: 'done' })), ...items] });
+    res.json({ items: [...done, ...items] });
   });
 
   app.get('/api/completed/:id', (req, res) => {

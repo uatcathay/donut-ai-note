@@ -8,7 +8,7 @@ import {
   saveRecording as defaultSaveRecording,
   discardRecording as defaultDiscardRecording,
 } from './recordings.js';
-import { setAnalysisTarget } from './progress.js';
+import { setAnalysisTarget, startAnalysis, setStage, endAnalysis } from './progress.js';
 import { noteCompleted } from './completed.js';
 
 export function decideTitle(userTitle, suggestedTitle, dateStr) {
@@ -42,6 +42,9 @@ export async function processMeeting(input, deps = {}) {
   const discard = deps.discardRecording || defaultDiscardRecording;
   const setTarget = deps.setAnalysisTarget || setAnalysisTarget;
   const noteDone = deps.noteCompleted || noteCompleted;
+  const begin = deps.startAnalysis || startAnalysis;
+  const stage = deps.setStage || setStage;
+  const finish = deps.endAnalysis || endAnalysis;
   const now = deps.now || (() => new Date());
 
   const stamp = formatStamp(now());
@@ -59,6 +62,10 @@ export async function processMeeting(input, deps = {}) {
 
   // 分析在背景跑，畫面上同時列著好幾筆——進度得說得出自己跑的是哪一筆
   setTarget(recordingName);
+  // 起訖由這裡掌握，不是由分析器：進度要涵蓋整個工作。
+  // 曾經在 Gemini 一回應就結束，但那時筆記還沒寫進 Notion、已完成也還沒登記，
+  // 前端看到「不在跑了」而錄音還在磁碟上，就誤判成失敗。
+  begin();
 
   let analysis;
   let result;
@@ -74,11 +81,13 @@ export async function processMeeting(input, deps = {}) {
       nextSteps: analysis.nextSteps,
       transcript: analysis.transcript,
     };
+    stage('write');   // 寫入可能不快（逐字稿子頁），讓畫面說得出自己在做什麼
     destination = await writeFn(result, stamp);
   } catch (err) {
     // 保留錄音，並讓使用者知道它還在——否則畫面關掉就等於永久遺失
     err.message = `${err.message}（錄音已保留：${recordingName}，可稍後重試）`;
     err.recordingPath = recordingPath;
+    finish();
     throw err;
   }
 
@@ -89,5 +98,6 @@ export async function processMeeting(input, deps = {}) {
   noteDone(recordingName, done);
   // 結果已經寫進 Notion 或 .md，原始音檔沒有留存的必要
   await discard(recordingPath);
+  finish();
   return done;
 }
