@@ -190,7 +190,7 @@ export function start() {
   const app = createApp();
   const port = process.env.PORT || DEFAULT_PORT;
   listenLoopback(app, port);
-  log(`Donut AI Note運作中： http://localhost:${port}`);
+  log(`Donut AI Note 運作中： http://localhost:${port}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) start();

@@ -203,7 +203,7 @@ Expected: 三個檔案都存在；`grep -c` 回傳 `0`（佔位符已被實際�
 - [ ] **Step 5: 手動驗證啟動與關窗（需真人操作）**
 
 先確保 `.env` 已填、且埠 3000 目前沒有殘留伺服器（`lsof -ti:3000` 應為空；有的話 `lsof -ti:3000 | xargs kill`）。
-- [ ] 於 Finder 雙擊 `Donut AI Note.app` → Dock 出現自訂甜甜圈圖示；跳出一個約 480×720、無網址列的獨立小窗，顯示Donut AI Note頁。
+- [ ] 於 Finder 雙擊 `Donut AI Note.app` → Dock 出現自訂甜甜圈圖示；跳出一個約 480×720、無網址列的獨立小窗，顯示 Donut AI Note 頁。
 - [ ] 關閉該小窗 → 幾秒內背景伺服器結束：`lsof -ti:3000` 回傳空（無殘留）。
 - [ ] 再次雙擊可正常重開。
 

@@ -1085,7 +1085,7 @@ export function start() {
   for (const w of checkConfig(process.env)) console.warn('[設定提醒] ' + w);
   const app = createApp();
   const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`Donut AI Note運作中： http://localhost:${port}`));
+  app.listen(port, () => console.log(`Donut AI Note 運作中： http://localhost:${port}`));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) start();
@@ -1387,7 +1387,7 @@ git commit -m "feat: 前端錄音頁（四狀態＋暫停/繼續/重新開始）
 
 ```bash
 #!/bin/bash
-# 雙擊即可啟動Donut AI Note。請把本檔留在專案根目錄。
+# 雙擊即可啟動 Donut AI Note。請把本檔留在專案根目錄。
 cd "$(dirname "$0")" || exit 1
 if [ ! -d node_modules ]; then
   echo "首次啟動，安裝相依中…"

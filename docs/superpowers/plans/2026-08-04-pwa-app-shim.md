@@ -180,7 +180,7 @@ git commit -m "feat: add web app manifest so the page can be installed as a Chro
 npm start
 ```
 
-Expected: 印出 `Donut AI Note運作中： http://localhost:3000`
+Expected: 印出 `Donut AI Note 運作中： http://localhost:3000`
 
 - [ ] **Step 2: 請使用者安裝 PWA**
 
