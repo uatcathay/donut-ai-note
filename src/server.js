@@ -166,7 +166,12 @@ export function createApp(deps = {}) {
 // 兩個 loopback 都要綁：localhost 在 macOS 同時解析成 ::1 與 127.0.0.1，而且優先走
 // IPv6。只綁 IPv4 的話，另一個綁通配位址的開發伺服器（Next.js 預設就是）會吃下 ::1，
 // 於是 localhost:<port> 靜默地變成它——兩邊都啟動成功、都沒報錯，點 Dock 圖示卻開到
-// 別人的頁面。這實際發生過。兩個都佔住，後來者才會拿到明確的「埠號已被使用」。
+// 別人的頁面。這實際發生過。
+//
+// 保護機制不是「讓後來者綁不上」——Node 預設帶 SO_REUSEADDR，通配位址仍然綁得上，
+// 兩者可以並存。真正生效的是 BSD/macOS 的「比較 specific 的綁定優先」：只要我們持有
+// 這兩個特定位址，loopback 的連線就一定走我們這邊，與先後順序無關（兩個方向都實測過）。
+// 綁不上的只有想綁「同一個特定位址」的人，那種會拿到明確的 EADDRINUSE。
 export const LOOPBACKS = ['127.0.0.1', '::1'];
 
 export function listenLoopback(app, port, onError = warn) {
