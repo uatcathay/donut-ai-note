@@ -1,8 +1,15 @@
 {
   "name": "donut-ai-note",
   "version": "0.1.0",
+  "description": "在瀏覽器錄會議，用 Gemini 產出議題摘要與待辦，自動寫進 Notion。全繁體中文、本機執行。",
+  "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin"
+  ],
   "scripts": {
     "test": "node --test",
     "start": "node src/server.js"

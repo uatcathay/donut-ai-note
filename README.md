@@ -18,9 +18,15 @@ cp .env.example .env
 2. **`NOTION_TOKEN`（選填，要寫 Notion 才需要）**
    到 https://www.notion.so/my-integrations → New integration → 複製 Internal Integration Token。
 
-3. **`NOTION_PARENT_PAGE_ID`（選填）**
-   在 Notion 開啟你要放會議記錄的「父頁面」→ 右上 `•••` → Connections → 加入剛剛建立的 integration（否則會寫入失敗）。
-   父頁面網址結尾那段 32 碼英數即為 page id，貼進 `.env`。
+3. **`NOTION_DATABASE_ID`（選填）**
+   每場會議會成為**資料庫裡的一列**，所以要先有一個資料庫，且需具備兩個欄位：
+   - `Name`（標題型態）— 放會議標題
+   - `Date`（日期型態）— 放會議日期
+
+   建好之後，在該資料庫頁面右上 `•••` → Connections → 加入剛剛建立的 integration
+   （沒加的話會寫入失敗，而且錯誤訊息只會說找不到資料庫）。
+
+   資料庫網址中 `notion.so/` 之後、`?` 之前那段 32 碼英數即為 database id，貼進 `.env`。
 
 > 沒填 Notion 兩項時，結果會自動改存成**桌面 `.md` 檔**。
 
@@ -55,9 +61,25 @@ cp .env.example .env
 ## 五、測試
 
 - 自動化：`npm test`
-- 前端手動測試清單見 `docs/superpowers/plans/2026-07-31-donut-ai-note.md` Task 10 Step 3——該清單寫於 2026-08-02 錄音頁重新設計之前，描述的是舊版 UI，僅供對照測試步驟的大致流程，畫面細節請以目前實際畫面為準。
+- 自動化測試涵蓋 `src/` 全部模組（151 個）。前端 `public/app.js` 沒有測試環境，改動後請手動走一次：
+  錄音 → 停止 → 處理中那頁 → 摘要 → New AI Note，並確認分析清單三種狀態（分析中／待分析／已完成）顯示正確。
 
 ## 六、費用與限制
 
-- Gemini 免費版：約每天 250 次請求、單場會議建議 2 小時內。個人用足夠，且不產生費用。
-- 免費版資料可能被 Google 用於改善模型；機密會議請斟酌。
+- **不產生費用**，用的是 Gemini 免費版。
+- **額度以 token 計，不是以次數計。** Google 已不再公佈固定的額度表格，要看自己專案的實際額度請到
+  https://aistudio.google.com/rate-limit（網路上流傳的「每天幾次」數字互相矛盾，不可信）。
+  實測撞到上限時只發出約 52 次請求，擋住的是 token 量——所以該看的是錄音長度，不是次數。
+- **錄音滿三小時會自動停止並開始分析。** 再長下去會超過上傳大小上限，而錄音在上傳成功前
+  只存在於瀏覽器記憶體裡，超過就救不回來了。
+- 額度用完時錄音仍會正常保留在分析清單，等額度恢復（太平洋時間午夜）再按「立即分析」即可。
+- **隱私**：錄音會上傳到 Gemini 進行分析，分析結束後程式會主動刪除雲端那份。
+  本機那份在分析成功後也會刪掉，失敗則留著等你重試。
+  免費版的資料可能被 Google 用於改善模型，機密會議請斟酌。
+
+## 七、授權
+
+本專案原始碼採 [MIT License](LICENSE)。
+
+`public/fonts/` 內的字體為第三方作品，依 SIL Open Font License 1.1 隨專案散布，
+不在 MIT 的涵蓋範圍內——授權全文與版權聲明見 `public/fonts/`。
