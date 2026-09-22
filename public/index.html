@@ -353,6 +353,17 @@
   </dialog>
 
   <!-- 錄音已經開始才跳出：提醒不該擋住錄音，沒注意到這個框也不會漏錄 -->
+  <dialog id="auto-stop-notice" class="dialog">
+    <p class="dialog-msg dialog-msg--title">已達錄音上限</p>
+    <p class="dialog-msg">
+      錄音已滿三小時，自動停止並開始分析。<br>
+      再錄下去會因為檔案超過上傳上限而整段無法保存。
+    </p>
+    <div class="dialog-actions">
+      <button id="btn-auto-stop-ok" class="linkbtn">知道了</button>
+    </div>
+  </dialog>
+
   <dialog id="quota-notice" class="dialog">
     <p class="dialog-msg dialog-msg--title">已開始錄音</p>
     <p class="dialog-msg">

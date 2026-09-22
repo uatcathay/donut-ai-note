@@ -10,7 +10,11 @@ LABEL="com.local.browser-ai-note"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-3737}"
-LOG="/tmp/browser-ai-note.log"
+# 不要放 /tmp：macOS 重開機會清空它，log 加時間戳記的用意（事後查得到失敗發生在何時）
+# 就完全落空了。~/Library/Logs 是 macOS 使用者層級 log 的慣例位置，Console.app 也看得到。
+LOG="$HOME/Library/Logs/browser-ai-note.log"
+
+mkdir -p "$(dirname "$LOG")"
 
 usage() {
   cat >&2 <<USAGE

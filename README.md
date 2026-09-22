@@ -43,7 +43,7 @@ cp .env.example .env
 ## 四、故障排除
 
 - **搬動了專案目錄**：plist 內寫死的是絕對路徑，搬移後常駐服務會失效，重新執行 `bash scripts/install-launchagent.sh` 即可（腳本會用新路徑覆寫舊 plist）。
-- **行為異常時先看 log**：`/tmp/browser-ai-note.log`，伺服器的 stdout/stderr 都寫在這裡。
+- **行為異常時先看 log**：`~/Library/Logs/browser-ai-note.log`，伺服器的 stdout/stderr 都寫在這裡。（早期版本寫在 `/tmp`，但那裡重開機會被清空。）
 - **刪掉專案資料夾前忘了 `--uninstall`**（目前無法自動復原的孤兒情境）：
   `~/Library/LaunchAgents/com.local.browser-ai-note.plist` 會留在原地，launchd 每 10 秒重試一次已經不存在的執行檔，而原本能移除它的腳本也隨資料夾一起消失了。手動清除：
   ```

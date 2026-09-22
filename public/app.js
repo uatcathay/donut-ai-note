@@ -34,8 +34,28 @@ function fmt(s) {
   const ss = String(s % 60).padStart(2, '0');
   return `${m}:${ss}`;
 }
+// 錄音在送出成功之前只存在於瀏覽器記憶體裡，而上傳上限是 200MB。
+// 實測約 49MB/小時，所以超過大約四小時就會被擋在上傳之前——multer 在進到我們的
+// 程式之前就拒絕，檔案從來沒落地過，按「再試一次」是把同一份太大的東西再送一次。
+// 那段錄音就再也救不回來了。三小時（約 148MB）留了餘裕。
+// 只算實際錄音的秒數：暫停期間不累計，因為決定檔案大小的是錄到的內容。
+const MAX_RECORDING_SEC = 3 * 60 * 60;
+
 function startTimer() {
-  timerId = setInterval(() => { seconds += 1; $('timer').textContent = fmt(seconds); }, 1000);
+  timerId = setInterval(() => {
+    seconds += 1;
+    $('timer').textContent = fmt(seconds);
+    if (seconds >= MAX_RECORDING_SEC) autoStop();
+  }, 1000);
+}
+
+// 到達上限就照常停止並分析——跟自己按下停止完全一樣。
+// 額度若因此用完也不會損失任何東西：之後錄的音一樣會落地、留在分析清單上，
+// 等額度恢復再按「立即分析」即可。
+function autoStop() {
+  stopTimer();
+  $('auto-stop-notice').showModal();
+  stopAndAnalyze();
 }
 function stopTimer() { clearInterval(timerId); timerId = null; }
 
