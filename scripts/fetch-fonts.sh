@@ -7,7 +7,7 @@
 # 而且字體請求會把使用者的瀏覽行為送到第三方。代價是 4.2MB 進版控。
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 FONT_DIR="$PROJECT_DIR/public/fonts"
 # Google Fonts 依 User-Agent 決定回傳格式；舊的 UA 會拿到 ttf 而非 woff2
 UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"

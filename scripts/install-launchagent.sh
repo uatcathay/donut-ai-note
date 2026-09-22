@@ -8,7 +8,9 @@ set -euo pipefail
 
 LABEL="com.local.donut-ai-note"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# pwd -P 取實體路徑：launchd 不會重新解析符號連結，
+# 寫進 plist 的若是邏輯路徑，符號連結一改服務就悄悄壞掉。
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 PORT="${PORT:-3737}"
 # 不要放 /tmp：macOS 重開機會清空它，log 加時間戳記的用意（事後查得到失敗發生在何時）
 # 就完全落空了。~/Library/Logs 是 macOS 使用者層級 log 的慣例位置，Console.app 也看得到。
