@@ -1,6 +1,10 @@
 # Donut AI Note
 
-瀏覽器即時錄音 → Gemini 免費版產出「逐字稿＋摘要＋重點」→ 寫進指定 Notion 頁面底下（或桌面 `.md`）。全繁體中文、本機執行。
+在瀏覽器即時錄音 → Gemini 免費版產出「逐字稿＋議題摘要＋待辦」→ 寫進指定的 Notion 資料庫（或桌面 `.md`）。全繁體中文、本機執行。
+
+> **僅支援 macOS，且需要 Google Chrome。**
+> 常駐伺服器用的是 macOS 的 LaunchAgent、App 視窗用的是 Chrome 的 PWA 機制、
+> log 寫在 `~/Library/Logs/`——這三項都沒有 Windows／Linux 的對應實作。
 
 ## 一、安裝
 
