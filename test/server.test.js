@@ -162,7 +162,7 @@ test('GET /manifest.webmanifest 提供可安裝 PWA 的必要欄位', async () =
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type'), /application\/manifest\+json/);
   const m = await res.json();
-  assert.equal(m.name, 'Browser AI Note');
+  assert.equal(m.name, 'Donut AI Note');
   assert.equal(m.start_url, '/');
   assert.equal(m.display, 'standalone');
   const sizes = m.icons.map((i) => i.sizes);

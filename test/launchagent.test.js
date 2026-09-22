@@ -13,7 +13,7 @@ function printPlist() {
 
 test('--print-plist 產出 launchd 需要的基本欄位', () => {
   const out = printPlist();
-  assert.match(out, /<key>Label<\/key>\s*<string>com\.local\.browser-ai-note<\/string>/);
+  assert.match(out, /<key>Label<\/key>\s*<string>com\.local\.donut-ai-note<\/string>/);
   assert.match(out, /<key>RunAtLoad<\/key>\s*<true\/>/);
   assert.match(out, /<key>KeepAlive<\/key>\s*<true\/>/);
 });

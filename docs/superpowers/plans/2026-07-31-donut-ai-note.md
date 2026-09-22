@@ -21,7 +21,7 @@
 ## 檔案結構
 
 ```
-meeting-recorder/
+donut-ai-note/
 ├── 會議記錄.command          # 雙擊啟動器（Task 11）
 ├── package.json              # Task 1
 ├── .env.example              # Task 1
@@ -78,7 +78,7 @@ meeting-recorder/
 
 Run:
 ```bash
-cd ~/.claude/projects/meeting-recorder
+cd ~/.claude/projects/donut-ai-note
 mkdir -p public src/analyzers src/outputs test
 ```
 
@@ -95,7 +95,7 @@ npm install express multer @google/genai @notionhq/client
 `package.json`（保留 `npm install` 寫入的 `dependencies` 版本，其餘欄位改成）：
 ```json
 {
-  "name": "meeting-recorder",
+  "name": "donut-ai-note",
   "version": "0.1.0",
   "type": "module",
   "engines": { "node": ">=18" },
@@ -1085,7 +1085,7 @@ export function start() {
   for (const w of checkConfig(process.env)) console.warn('[設定提醒] ' + w);
   const app = createApp();
   const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`會議記錄工具運作中： http://localhost:${port}`));
+  app.listen(port, () => console.log(`Donut AI Note運作中： http://localhost:${port}`));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) start();
@@ -1127,7 +1127,7 @@ git commit -m "feat: Express 伺服器與 /api/process 路由"
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>會議記錄工具</title>
+  <title>Donut AI Note</title>
   <style>
     body { font-family: -apple-system, "PingFang TC", sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
     h1 { font-size: 20px; }
@@ -1147,7 +1147,7 @@ git commit -m "feat: Express 伺服器與 /api/process 路由"
   </style>
 </head>
 <body>
-  <h1>🎙️ 會議記錄工具</h1>
+  <h1>🎙️ Donut AI Note</h1>
 
   <section id="view-idle">
     <input id="title" type="text" placeholder="會議標題（選填，空白就用日期）" />
@@ -1387,7 +1387,7 @@ git commit -m "feat: 前端錄音頁（四狀態＋暫停/繼續/重新開始）
 
 ```bash
 #!/bin/bash
-# 雙擊即可啟動會議記錄工具。請把本檔留在專案根目錄。
+# 雙擊即可啟動Donut AI Note。請把本檔留在專案根目錄。
 cd "$(dirname "$0")" || exit 1
 if [ ! -d node_modules ]; then
   echo "首次啟動，安裝相依中…"
@@ -1405,14 +1405,14 @@ wait $SERVER_PID
 
 Run:
 ```bash
-chmod +x ~/.claude/projects/meeting-recorder/會議記錄.command
+chmod +x ~/.claude/projects/donut-ai-note/會議記錄.command
 ```
 
 - [ ] **Step 3: 建立 `README.md`**
 
 `README.md`：
 ````markdown
-# 會議記錄工具
+# Donut AI Note
 
 瀏覽器即時錄音 → Gemini 免費版產出「逐字稿＋摘要＋重點」→ 寫進指定 Notion 頁面底下（或桌面 `.md`）。全繁體中文、本機執行。
 

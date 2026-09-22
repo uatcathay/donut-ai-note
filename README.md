@@ -1,4 +1,4 @@
-# 會議記錄工具
+# Donut AI Note
 
 瀏覽器即時錄音 → Gemini 免費版產出「逐字稿＋摘要＋重點」→ 寫進指定 Notion 頁面底下（或桌面 `.md`）。全繁體中文、本機執行。
 
@@ -28,7 +28,7 @@ cp .env.example .env
 
 1. 首次安裝：`bash scripts/install-launchagent.sh`（伺服器會在每次登入時自動於背景啟動）。
 2. 接著在 Chrome 開啟 http://localhost:3737/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
-   完成後 `~/Applications/Chrome Apps.localized/Browser AI Note.app` 即為正式 App，可拖到 Dock。
+   完成後 `~/Applications/Chrome Apps.localized/Donut AI Note.app` 即為正式 App，可拖到 Dock。
 3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
 4. 關閉視窗只是關視窗，背景伺服器持續運作，下次點圖示即可瞬開。
 
@@ -43,19 +43,19 @@ cp .env.example .env
 ## 四、故障排除
 
 - **搬動了專案目錄**：plist 內寫死的是絕對路徑，搬移後常駐服務會失效，重新執行 `bash scripts/install-launchagent.sh` 即可（腳本會用新路徑覆寫舊 plist）。
-- **行為異常時先看 log**：`~/Library/Logs/browser-ai-note.log`，伺服器的 stdout/stderr 都寫在這裡。（早期版本寫在 `/tmp`，但那裡重開機會被清空。）
+- **行為異常時先看 log**：`~/Library/Logs/donut-ai-note.log`，伺服器的 stdout/stderr 都寫在這裡。（早期版本寫在 `/tmp`，但那裡重開機會被清空。）
 - **刪掉專案資料夾前忘了 `--uninstall`**（目前無法自動復原的孤兒情境）：
-  `~/Library/LaunchAgents/com.local.browser-ai-note.plist` 會留在原地，launchd 每 10 秒重試一次已經不存在的執行檔，而原本能移除它的腳本也隨資料夾一起消失了。手動清除：
+  `~/Library/LaunchAgents/com.local.donut-ai-note.plist` 會留在原地，launchd 每 10 秒重試一次已經不存在的執行檔，而原本能移除它的腳本也隨資料夾一起消失了。手動清除：
   ```
-  launchctl bootout gui/$UID/com.local.browser-ai-note
-  rm ~/Library/LaunchAgents/com.local.browser-ai-note.plist
+  launchctl bootout gui/$UID/com.local.donut-ai-note
+  rm ~/Library/LaunchAgents/com.local.donut-ai-note.plist
   ```
 - **PORT 設定不一致**：`PORT` 是在安裝當下從執行 shell 的環境變數寫進 plist 的。若安裝時的 shell 有另外 export 過 `PORT`，常駐服務會改聽那個埠，但已安裝的 Chrome shim 仍指向舊的埠號——症狀是點圖示出現連線錯誤。安裝前先確認 `echo $PORT` 是空的（或等於 3737），或重新以未覆寫 `PORT` 的 shell 執行安裝腳本。
 
 ## 五、測試
 
 - 自動化：`npm test`
-- 前端手動測試清單見 `docs/superpowers/plans/2026-07-31-meeting-recorder.md` Task 10 Step 3——該清單寫於 2026-08-02 錄音頁重新設計之前，描述的是舊版 UI，僅供對照測試步驟的大致流程，畫面細節請以目前實際畫面為準。
+- 前端手動測試清單見 `docs/superpowers/plans/2026-07-31-donut-ai-note.md` Task 10 Step 3——該清單寫於 2026-08-02 錄音頁重新設計之前，描述的是舊版 UI，僅供對照測試步驟的大致流程，畫面細節請以目前實際畫面為準。
 
 ## 六、費用與限制
 

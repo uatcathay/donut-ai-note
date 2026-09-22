@@ -32,7 +32,7 @@
 ## 檔案結構
 
 ```
-meeting-recorder/
+donut-ai-note/
 ├── public/
 │   ├── index.html   # 修改：四狀態標記全面重寫 + 內嵌 CSS（約 200 行）
 │   └── app.js       # 修改：僅適配新標記，錄音流程與 API 串接不變
@@ -263,7 +263,7 @@ meeting-recorder/
   <script src="app.js" type="module"></script>
 ```
 
-> 舊的 `<h1>🎙️ 會議記錄工具</h1>` 一併移除——新版面以中央按鈕為主角，不需要頁首標題。
+> 舊的 `<h1>🎙️ Donut AI Note</h1>` 一併移除——新版面以中央按鈕為主角，不需要頁首標題。
 
 - [ ] **Step 3: 在 `app.js` 加入 visualizer 長條的產生迴圈**
 
@@ -592,7 +592,7 @@ Expected: 無輸出（這些檔案在本次重做中完全沒動）。
 
 先確認 `.env` 的 key 正確、埠 3000 沒有殘留伺服器（`lsof -ti:3000` 應為空）。
 
-Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Browser AI Note.app`。
+Run: `bash scripts/build-app.sh`，然後於 Finder 雙擊 `Donut AI Note.app`。
 
 逐項確認：
 - [ ] 480×720 獨立小窗，無橫向捲軸，內容垂直置中。

@@ -257,7 +257,7 @@ async analyze(audioBuffer: Buffer, mimeType: string) => {
 ## 檔案結構總覽
 
 ```
-meeting-recorder/
+donut-ai-note/
 ├── 會議記錄.command          # 雙擊啟動器
 ├── package.json
 ├── .env.example

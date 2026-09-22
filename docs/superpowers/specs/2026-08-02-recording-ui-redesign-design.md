@@ -1,8 +1,8 @@
-# Browser AI Note — 錄音頁視覺重做 設計文件
+# Donut AI Note — 錄音頁視覺重做 設計文件
 
 **日期**：2026-08-02
 **狀態**：設計定案，待寫實作計畫
-**專案**：meeting-recorder
+**專案**：donut-ai-note
 **前情**：[2026-08-01 App 打包與介面優化](2026-08-01-app-packaging-ui-polish-design.md) 的「元件 4：錄音頁視覺重做」當時因缺參考設計而延後，本文件即該項目的完整設計。
 
 ---

@@ -1,8 +1,8 @@
-# Browser AI Note — App 打包與介面優化 設計文件
+# Donut AI Note — App 打包與介面優化 設計文件
 
 **日期**：2026-08-01
 **狀態**：設計定案，待寫實作計畫
-**專案**：meeting-recorder（v1 已完成並合併 main；本文件為 v1.1 體驗優化）
+**專案**：donut-ai-note（v1 已完成並合併 main；本文件為 v1.1 體驗優化）
 
 ---
 
@@ -35,14 +35,14 @@ v1 能用，但三個體驗痛點：
 
 ## 元件設計
 
-### 1. macOS App Bundle：`Browser AI Note.app`
+### 1. macOS App Bundle：`Donut AI Note.app`
 
 取代 `會議記錄.command`。標準 app bundle 結構：
 
 ```
-Browser AI Note.app/
+Donut AI Note.app/
 └── Contents/
-    ├── Info.plist            # CFBundleName=Browser AI Note、CFBundleExecutable=launch、CFBundleIconFile=icon
+    ├── Info.plist            # CFBundleName=Donut AI Note、CFBundleExecutable=launch、CFBundleIconFile=icon
     ├── MacOS/
     │   └── launch            # 可執行 shell 腳本（見元件 2）
     └── Resources/
@@ -63,7 +63,7 @@ Browser AI Note.app/
 3. **開啟獨立視窗**：以 Chrome 應用程式視窗模式啟動：
    ```
    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-     --user-data-dir="$HOME/.browser-ai-note-chrome" \
+     --user-data-dir="$HOME/.donut-ai-note-chrome" \
      --app="http://localhost:$PORT" \
      --window-size=480,720
    ```
@@ -90,10 +90,10 @@ Browser AI Note.app/
 
 ## 影響範圍與測試
 
-**影響檔案**：新增 `Browser AI Note.app/`（bundle 內含 Info.plist、launch、icon.icns）；改寫 `public/index.html` 與 CSS，可能微調 `public/app.js` 的元素選取；移除 `會議記錄.command`；更新 `README.md`。後端 `src/`、`test/` 不動。
+**影響檔案**：新增 `Donut AI Note.app/`（bundle 內含 Info.plist、launch、icon.icns）；改寫 `public/index.html` 與 CSS，可能微調 `public/app.js` 的元素選取；移除 `會議記錄.command`；更新 `README.md`。後端 `src/`、`test/` 不動。
 
 **測試策略**（本次多為打包與外觀，難自動化 → 手動測試清單）：
-- [ ] 雙擊 `Browser AI Note.app` → 出現自訂圖示於 Dock，開啟一個約 480×720、無網址列的獨立小窗。
+- [ ] 雙擊 `Donut AI Note.app` → 出現自訂圖示於 Dock，開啟一個約 480×720、無網址列的獨立小窗。
 - [ ] 視窗外觀符合參考設計；四狀態切換正確、繁中文案正確。
 - [ ] 錄音 → 停止 → Gemini 分析 → 寫入 Notion 資料庫一列（或桌面 .md），流程與 v1 一致。
 - [ ] 暫停/繼續（波形靜止/恢復）、重新開始（確認後歸零）正常。
@@ -101,7 +101,7 @@ Browser AI Note.app/
 - [ ] 再次雙擊可正常重開。
 - 後端：沿用現有 `npm test`，應維持全綠、不受影響。
 
-**README 更新**：使用說明由「雙擊 `會議記錄.command`」改為「雙擊 Browser AI Note」，並說明關窗即結束。
+**README 更新**：使用說明由「雙擊 `會議記錄.command`」改為「雙擊 Donut AI Note」，並說明關窗即結束。
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 讓 Browser AI Note 在 Dock 上成為有專屬圖示、點擊可回到既有視窗的真正 App——改用 Chrome PWA app shim 承載視窗，伺服器改由 macOS LaunchAgent 登入常駐。
+**Goal:** 讓 Donut AI Note 在 Dock 上成為有專屬圖示、點擊可回到既有視窗的真正 App——改用 Chrome PWA app shim 承載視窗，伺服器改由 macOS LaunchAgent 登入常駐。
 
 **Architecture:** 前端加上 Web App Manifest，讓 `localhost:3000` 可被 Chrome 安裝成 app shim（真正的 macOS bundle，跑在日常 Chrome 的設定檔上）。伺服器脫離「隨視窗開關」的生命週期，改由 launchd 常駐；原本的 shell script 啟動器與 `/shutdown` 機制隨之移除。
 
@@ -45,7 +45,7 @@
 | `public/app.js`（修改，第 267–271 行） | 移除 `pagehide` 的 `/shutdown` beacon |
 | `test/server.test.js`（修改） | 移除 4 項 shutdown 測試，改加「`/shutdown` 已不存在」回歸測試 |
 | `README.md`（修改，「三、使用」節） | 改寫啟動與結束方式 |
-| `.gitignore`（修改） | 移除 `/Browser AI Note.app/` 與 `/assets/icon.iconset/` 兩行 |
+| `.gitignore`（修改） | 移除 `/Donut AI Note.app/` 與 `/assets/icon.iconset/` 兩行 |
 | `scripts/build-app.sh`、`scripts/launch.template.sh`、`scripts/Info.plist`（刪除） | 舊 App bundle 建置流程 |
 
 ---
@@ -75,7 +75,7 @@ test('GET /manifest.webmanifest 提供可安裝 PWA 的必要欄位', async () =
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type'), /application\/manifest\+json/);
   const m = await res.json();
-  assert.equal(m.name, 'Browser AI Note');
+  assert.equal(m.name, 'Donut AI Note');
   assert.equal(m.start_url, '/');
   assert.equal(m.display, 'standalone');
   const sizes = m.icons.map((i) => i.sizes);
@@ -116,8 +116,8 @@ sips -z 512 512 assets/icon.png --out public/icons/icon-512.png
 
 ```json
 {
-  "name": "Browser AI Note",
-  "short_name": "Browser AI Note",
+  "name": "Donut AI Note",
+  "short_name": "Donut AI Note",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -134,7 +134,7 @@ sips -z 512 512 assets/icon.png --out public/icons/icon-512.png
 
 - [ ] **Step 5: 在 index.html 掛上 manifest**
 
-`public/index.html` 第 6 行 `<title>Browser AI Note</title>` 之後插入：
+`public/index.html` 第 6 行 `<title>Donut AI Note</title>` 之後插入：
 
 ```html
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -172,7 +172,7 @@ git commit -m "feat: add web app manifest so the page can be installed as a Chro
 
 **Interfaces:**
 - Consumes: Task 1 產出的 `/manifest.webmanifest` 與圖示
-- Produces: 使用者對五項關卡的確認，以及 `~/Applications/Chrome Apps.localized/Browser AI Note.app`
+- Produces: 使用者對五項關卡的確認，以及 `~/Applications/Chrome Apps.localized/Donut AI Note.app`
 
 - [ ] **Step 1: 啟動伺服器**
 
@@ -180,7 +180,7 @@ git commit -m "feat: add web app manifest so the page can be installed as a Chro
 npm start
 ```
 
-Expected: 印出 `會議記錄工具運作中： http://localhost:3000`
+Expected: 印出 `Donut AI Note運作中： http://localhost:3000`
 
 - [ ] **Step 2: 請使用者安裝 PWA**
 
@@ -192,8 +192,8 @@ Expected: 印出 `會議記錄工具運作中： http://localhost:3000`
 - [ ] **Step 3: 確認 shim 產生**
 
 ```bash
-ls -d "$HOME/Applications/Chrome Apps.localized/Browser AI Note.app" && \
-  defaults read "$HOME/Applications/Chrome Apps.localized/Browser AI Note.app/Contents/Info.plist" | grep -E "CrAppModeShortcutID|CrAppModeShortcutURL"
+ls -d "$HOME/Applications/Chrome Apps.localized/Donut AI Note.app" && \
+  defaults read "$HOME/Applications/Chrome Apps.localized/Donut AI Note.app/Contents/Info.plist" | grep -E "CrAppModeShortcutID|CrAppModeShortcutURL"
 ```
 
 Expected: 目錄存在，且 `CrAppModeShortcutURL` 為 `http://localhost:3000/`
@@ -217,7 +217,7 @@ git revert --no-edit HEAD
 rm -rf public/icons
 ```
 
-再請使用者於 Chrome 的 `chrome://apps` 對該 App 按右鍵移除。舊的 `Browser AI Note.app` 全程未被更動，仍可照常使用。
+再請使用者於 Chrome 的 `chrome://apps` 對該 App 按右鍵移除。舊的 `Donut AI Note.app` 全程未被更動，仍可照常使用。
 
 ---
 
@@ -229,7 +229,7 @@ rm -rf public/icons
 
 **Interfaces:**
 - Consumes: `src/server.js` 的 `start()`（既有；由 `node src/server.js` 觸發）
-- Produces: `~/Library/LaunchAgents/com.local.browser-ai-note.plist`；腳本的 `--print-plist` 模式將 plist 印到 stdout 而**不產生任何副作用**，供測試使用
+- Produces: `~/Library/LaunchAgents/com.local.donut-ai-note.plist`；腳本的 `--print-plist` 模式將 plist 印到 stdout 而**不產生任何副作用**，供測試使用
 
 - [ ] **Step 1: 寫失敗的測試**
 
@@ -251,7 +251,7 @@ function printPlist() {
 
 test('--print-plist 產出 launchd 需要的基本欄位', () => {
   const out = printPlist();
-  assert.match(out, /<key>Label<\/key>\s*<string>com\.local\.browser-ai-note<\/string>/);
+  assert.match(out, /<key>Label<\/key>\s*<string>com\.local\.donut-ai-note<\/string>/);
   assert.match(out, /<key>RunAtLoad<\/key>\s*<true\/>/);
   assert.match(out, /<key>KeepAlive<\/key>\s*<true\/>/);
 });
@@ -288,18 +288,18 @@ Expected: FAIL — 三項皆因 `scripts/install-launchagent.sh` 不存在而拋
 
 ```bash
 #!/bin/bash
-# 安裝／反安裝 Browser AI Note 的常駐伺服器（macOS LaunchAgent）。
+# 安裝／反安裝 Donut AI Note 的常駐伺服器（macOS LaunchAgent）。
 # 用法：
 #   bash scripts/install-launchagent.sh              安裝並立即啟動
 #   bash scripts/install-launchagent.sh --uninstall  停止並移除
 #   bash scripts/install-launchagent.sh --print-plist 只印出 plist（不做任何事，供測試用）
 set -euo pipefail
 
-LABEL="com.local.browser-ai-note"
+LABEL="com.local.donut-ai-note"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-3000}"
-LOG="/tmp/browser-ai-note.log"
+LOG="/tmp/donut-ai-note.log"
 
 # launchd 啟動時的 PATH 極精簡，node 必須是絕對路徑
 NODE_BIN="$(command -v node || true)"
@@ -387,7 +387,7 @@ Expected: PASS，`fail 0`，總數由 51 增為 54
 # 先確保沒有手動啟動的伺服器佔著 3000（KeepAlive 會讓埠衝突變成重啟迴圈）
 lsof -ti:3000 | xargs -r kill 2>/dev/null || true
 bash scripts/install-launchagent.sh
-launchctl print "gui/$UID/com.local.browser-ai-note" | grep -E "state|path" | head -5
+launchctl print "gui/$UID/com.local.donut-ai-note" | grep -E "state|path" | head -5
 curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:3000/
 ```
 
@@ -396,7 +396,7 @@ Expected: 腳本印出「已安裝並啟動」；`curl` 回 `HTTP 200`
 - [ ] **Step 6: 驗證重開機後仍在（不實際重開機）**
 
 ```bash
-launchctl print "gui/$UID/com.local.browser-ai-note" | grep -E "runatload|state"
+launchctl print "gui/$UID/com.local.donut-ai-note" | grep -E "runatload|state"
 ```
 
 Expected: 顯示 `runatload = 1`、`state = running`
@@ -515,7 +515,7 @@ git commit -m "refactor: drop close-to-quit shutdown path now that the server is
 
 **Files:**
 - Delete: `scripts/build-app.sh`、`scripts/launch.template.sh`、`scripts/Info.plist`
-- Delete（未納入 git，直接 `rm`）: `Browser AI Note.app/`、`assets/icon.iconset/`
+- Delete（未納入 git，直接 `rm`）: `Donut AI Note.app/`、`assets/icon.iconset/`
 - Modify: `.gitignore`（移除兩行）
 - Modify: `README.md`「三、使用」節
 
@@ -527,17 +527,17 @@ git commit -m "refactor: drop close-to-quit shutdown path now that the server is
 
 ```bash
 git rm -q scripts/build-app.sh scripts/launch.template.sh scripts/Info.plist
-rm -rf "Browser AI Note.app" assets/icon.iconset
+rm -rf "Donut AI Note.app" assets/icon.iconset
 ```
 
-`Browser AI Note.app/` 與 `assets/icon.iconset/` 皆列於 `.gitignore`，未納入版控，故用 `rm` 而非 `git rm`。
+`Donut AI Note.app/` 與 `assets/icon.iconset/` 皆列於 `.gitignore`，未納入版控，故用 `rm` 而非 `git rm`。
 
 - [ ] **Step 2: 清掉 .gitignore 中已無意義的兩行**
 
 `.gitignore` 移除：
 
 ```
-/Browser AI Note.app/
+/Donut AI Note.app/
 /assets/icon.iconset/
 ```
 
@@ -548,7 +548,7 @@ rm -rf "Browser AI Note.app" assets/icon.iconset
 ```markdown
 1. 首次安裝：`bash scripts/install-launchagent.sh`（伺服器會在每次登入時自動於背景啟動）。
 2. 接著在 Chrome 開啟 http://localhost:3000/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
-   完成後 `~/Applications/Chrome Apps.localized/Browser AI Note.app` 即為正式 App，可拖到 Dock。
+   完成後 `~/Applications/Chrome Apps.localized/Donut AI Note.app` 即為正式 App，可拖到 Dock。
 3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
 4. 關閉視窗只是關視窗，背景伺服器持續運作，下次點圖示即可瞬開。
 
@@ -568,7 +568,7 @@ Expected: PASS，`fail 0`，總數 51
 
 - [ ] **Step 5: 確認沒有殘留參照**
 
-Run: `grep -rn "build-app\|launch.template\|Browser AI Note.app" README.md docs/*.md src public test scripts 2>/dev/null`
+Run: `grep -rn "build-app\|launch.template\|Donut AI Note.app" README.md docs/*.md src public test scripts 2>/dev/null`
 Expected: 僅 `docs/superpowers/` 下的舊 spec / plan 會命中（歷史文件，不動）；`src`、`public`、`test`、`scripts`、`README.md` 皆無輸出
 
 - [ ] **Step 6: Commit**
@@ -619,5 +619,5 @@ git diff main --stat
 ## 自我檢查結果
 
 - **Spec 涵蓋**：manifest → Task 1；LaunchAgent → Task 3；移除舊 `.app` → Task 5；移除 shutdown → Task 4；手動安裝 → Task 2；兩階段關卡 → Task 2 的硬性關卡與 Global Constraints。皆有對應任務。
-- **命名一致性**：`install-launchagent.sh` 的三個模式（無參數／`--uninstall`／`--print-plist`）在 Task 3、5、6 與 README 中用法一致；Label `com.local.browser-ai-note` 全篇一致。
+- **命名一致性**：`install-launchagent.sh` 的三個模式（無參數／`--uninstall`／`--print-plist`）在 Task 3、5、6 與 README 中用法一致；Label `com.local.donut-ai-note` 全篇一致。
 - **測試計數**：49 →（Task 1）51 →（Task 3）54 →（Task 4）51 →（`f201e93` 硬化安裝腳本，追加「未知參數」測試，回填說明見 Task 3 Step 3）52。各 Task 內文的 Expected 仍依當時的計數標註；分支最終狀態是 **52 個測試、0 個失敗**。

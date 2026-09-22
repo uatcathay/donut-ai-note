@@ -1,15 +1,15 @@
-# Browser AI Note — 改用 Chrome PWA 承載視窗 設計文件
+# Donut AI Note — 改用 Chrome PWA 承載視窗 設計文件
 
 **日期**：2026-08-04
 **狀態**：設計定案，待寫實作計畫
 **分支**：`feature/pwa-app-shim`
-**專案**：meeting-recorder（v1.1 已合併 main；本文件為視窗承載方式的架構調整）
+**專案**：donut-ai-note（v1.1 已合併 main；本文件為視窗承載方式的架構調整）
 
 ---
 
 ## 一句話目標
 
-讓 Browser AI Note 在 Dock 上是一個**有專屬圖示、點了會回到既有視窗**的真正 App——把視窗承載方式從「shell script 啟動器 + Chrome `--app`」換成 **Chrome PWA app shim**，伺服器改由 macOS LaunchAgent 登入常駐。
+讓 Donut AI Note 在 Dock 上是一個**有專屬圖示、點了會回到既有視窗**的真正 App——把視窗承載方式從「shell script 啟動器 + Chrome `--app`」換成 **Chrome PWA app shim**，伺服器改由 macOS LaunchAgent 登入常駐。
 
 ## 背景與動機
 
@@ -24,7 +24,7 @@
 
 **此問題已自行解決，不需程式碼修改**：Chrome 會把 app 模式視窗的大小記在 `browser.app_window_placement`（以網址推導的鍵，如 `localhost_/…`），**每次關窗覆寫、下次開窗沿用**。使用者實測確認：拉成 500×800 關掉再開即為 500×800，再拉成 700×1000 亦然。
 
-**Dock 甜甜圈消失的根因**（已查證）：`scripts/Info.plist` 並未設定 `LSUIElement` 或 `LSBackgroundOnly`；真正原因是該 `.app` 的執行檔為純 shell script，全程未連上 window server，macOS 等不到它註冊成 GUI App 就把 Dock 圖示收掉（`lsappinfo list` 完全查不到 `com.local.browser-ai-note` 可佐證）。使用者先前看到的甜甜圈，其實是 Chrome 獨立實例的 Dock 圖示。
+**Dock 甜甜圈消失的根因**（已查證）：`scripts/Info.plist` 並未設定 `LSUIElement` 或 `LSBackgroundOnly`；真正原因是該 `.app` 的執行檔為純 shell script，全程未連上 window server，macOS 等不到它註冊成 GUI App 就把 Dock 圖示收掉（`lsappinfo list` 完全查不到 `com.local.donut-ai-note` 可佐證）。使用者先前看到的甜甜圈，其實是 Chrome 獨立實例的 Dock 圖示。
 
 因此本次唯一要解的是**「App 身分」**：Dock 專屬圖示、點圖示回到既有視窗、執行中指示點、⌘-Tab 與 Spotlight 中為獨立項目。
 
@@ -59,7 +59,7 @@
 
 | 欄位 | 值 | 理由 |
 |---|---|---|
-| `name` / `short_name` | `Browser AI Note` | 決定 shim 的 App 名稱 |
+| `name` / `short_name` | `Donut AI Note` | 決定 shim 的 App 名稱 |
 | `start_url` | `/` | |
 | `display` | `standalone` | 無網址列、無標籤列，等同現在的 `--app` 外觀 |
 | `background_color` / `theme_color` | 取自 `index.html` 既有 CSS 變數 | 視窗外框與載入畫面配色一致 |
@@ -73,14 +73,14 @@
 
 ### 2. LaunchAgent：伺服器登入常駐
 
-**新增** `scripts/install-launchagent.sh`，產生並載入 `~/Library/LaunchAgents/com.local.browser-ai-note.plist`：
+**新增** `scripts/install-launchagent.sh`，產生並載入 `~/Library/LaunchAgents/com.local.donut-ai-note.plist`：
 
 - `ProgramArguments`：node 絕對路徑 + `src/server.js`（launchd 的 PATH 極精簡，**必須**注入絕對路徑，沿用 `build-app.sh` 既有的 `command -v node` 做法）
 - `WorkingDirectory`：專案根目錄（伺服器需讀取專案根的 `.env`）
 - `EnvironmentVariables.PORT`：安裝當下從執行 shell 的環境變數讀入（預設 `3000`），寫死進 plist
 - `RunAtLoad`：`true`
 - `KeepAlive`：`true`（crash 自動重啟）
-- `StandardOutPath` / `StandardErrorPath`：`/tmp/browser-ai-note.log`
+- `StandardOutPath` / `StandardErrorPath`：`/tmp/donut-ai-note.log`
 
 腳本行為：偵測專案路徑與 node 路徑 → 寫入 plist → `launchctl bootout`（若已存在）→ `launchctl bootstrap` → 以 `curl` 輪詢驗證 `localhost:3000` 起得來，失敗則印出 log 尾端。提供 `--uninstall` 反安裝、`--print-plist` 只印出 plist 內容供測試（不產生任何副作用）；未知參數會被拒絕並印出用法說明。
 
@@ -90,7 +90,7 @@
 
 ### 3. 移除舊 App Bundle
 
-刪除 `Browser AI Note.app`、`scripts/build-app.sh`、`scripts/launch.template.sh`、`scripts/Info.plist`。舊程式碼保留在 git 歷史。
+刪除 `Donut AI Note.app`、`scripts/build-app.sh`、`scripts/launch.template.sh`、`scripts/Info.plist`。舊程式碼保留在 git 歷史。
 
 ### 4. 移除「關窗即結束」機制
 
@@ -104,7 +104,7 @@
 
 ### 5. PWA 安裝（一次性手動步驟）
 
-Chrome 無可靠的命令列安裝介面，需使用者手動執行一次：在日常 Chrome 開啟 `http://localhost:3000/` → 網址列右側或 ⋮ 選單 →「投放、儲存及分享」→「安裝頁面為應用程式」。完成後 `~/Applications/Chrome Apps.localized/Browser AI Note.app` 出現，可拖入 Dock 釘住。
+Chrome 無可靠的命令列安裝介面，需使用者手動執行一次：在日常 Chrome 開啟 `http://localhost:3000/` → 網址列右側或 ⋮ 選單 →「投放、儲存及分享」→「安裝頁面為應用程式」。完成後 `~/Applications/Chrome Apps.localized/Donut AI Note.app` 出現，可拖入 Dock 釘住。
 
 ---
 
@@ -153,7 +153,7 @@ Chrome 無可靠的命令列安裝介面，需使用者手動執行一次：在�
 | 專案目錄搬移導致 plist 失效 | 重跑 `install-launchagent.sh`（腳本會覆寫舊 plist） |
 | 伺服器 crash | `KeepAlive` 自動重啟 |
 | PWA 開啟時伺服器未就緒 | 視窗顯示連線失敗；安裝腳本載入後會立即以 `curl` 驗證，避免此情況 |
-| 連接埠 3000 被佔用 | 沿用既有行為（伺服器啟動失敗並寫入 `/tmp/browser-ai-note.log`） |
+| 連接埠 3000 被佔用 | 沿用既有行為（伺服器啟動失敗並寫入 `/tmp/donut-ai-note.log`） |
 
 ## 測試
 

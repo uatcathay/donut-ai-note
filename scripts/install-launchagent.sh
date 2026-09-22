@@ -1,18 +1,18 @@
 #!/bin/bash
-# 安裝／反安裝 Browser AI Note 的常駐伺服器（macOS LaunchAgent）。
+# 安裝／反安裝 Donut AI Note 的常駐伺服器（macOS LaunchAgent）。
 # 用法：
 #   bash scripts/install-launchagent.sh              安裝並立即啟動
 #   bash scripts/install-launchagent.sh --uninstall  停止並移除
 #   bash scripts/install-launchagent.sh --print-plist 只印出 plist（不做任何事，供測試用）
 set -euo pipefail
 
-LABEL="com.local.browser-ai-note"
+LABEL="com.local.donut-ai-note"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-3737}"
 # 不要放 /tmp：macOS 重開機會清空它，log 加時間戳記的用意（事後查得到失敗發生在何時）
 # 就完全落空了。~/Library/Logs 是 macOS 使用者層級 log 的慣例位置，Console.app 也看得到。
-LOG="$HOME/Library/Logs/browser-ai-note.log"
+LOG="$HOME/Library/Logs/donut-ai-note.log"
 
 mkdir -p "$(dirname "$LOG")"
 
