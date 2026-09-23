@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🍩 Donut AI Note — 專案分享</title>
+<meta name="description" content="自己做的會議筆記工具：瀏覽器錄音，Gemini 產出逐字稿與議題摘要，自動寫進 Notion。全程本機、零費用。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Azeret+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F5F5; --surface:#FFFFFF; --fg:#1a1a1a; --emph:#373737;
+  --strong:#494949; --muted:#707070; --accent:#D4267A; --amber:#B5791A;
+  --danger:#c0392b; --line:#E5E5E5; --tint:#F7E9F1; --code:#F0F0F0;
+  --sans:'Noto Sans TC','PingFang TC','Heiti TC',system-ui,sans-serif;
+  --mono:'Azeret Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --grad:linear-gradient(90deg,#F9C05C,#F52D8E);
+  --wrap:1120px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:var(--sans); font-size:17px; line-height:1.8;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,p,ul,ol{margin:0}
+ul{padding:0; list-style:none}
+a{color:var(--accent)}
+
+/* ---------- shell ---------- */
+.wrap{max-width:var(--wrap); margin:0 auto; padding:0 28px}
+.bar{width:72px; height:8px; border-radius:4px; background:var(--grad)}
+.eyebrow{
+  font-family:var(--mono); font-size:14px; font-weight:500;
+  letter-spacing:.14em; color:var(--accent); text-transform:uppercase;
+}
+.sec{padding:84px 0; border-top:1px solid var(--line)}
+.sec:first-of-type{border-top:none}
+.sec-head{display:flex; flex-direction:column; gap:14px; margin-bottom:44px}
+.sec-head h2{font-size:clamp(30px,4.4vw,42px); font-weight:700; line-height:1.35}
+.sec-head .lede{font-size:18px; color:var(--muted); line-height:1.75; max-width:62ch}
+
+/* ---------- cards ---------- */
+.card{background:var(--surface); border-radius:16px; padding:32px 34px}
+.card h3{font-size:22px; font-weight:700; line-height:1.5}
+.card p{color:var(--strong)}
+.label{font-size:14px; font-weight:500; letter-spacing:.06em; color:var(--accent)}
+.grid{display:grid; gap:20px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+
+/* ---------- hero ---------- */
+.hero{padding:104px 0 76px}
+.hero h1{font-size:clamp(44px,8vw,80px); font-weight:700; line-height:1.2; margin:26px 0 22px}
+.hero .sub{font-size:clamp(18px,2.4vw,23px); line-height:1.85; color:var(--strong); text-align:justify; text-justify:inter-character}
+.chips{display:flex; flex-wrap:wrap; gap:10px; margin-top:30px}
+.chip{
+  background:var(--surface); border-radius:999px; padding:8px 18px;
+  font-size:14.5px; font-weight:500; color:var(--strong);
+}
+.hero .meta{margin-top:30px; font-family:var(--mono); font-size:14px; color:var(--muted)}
+
+/* ---------- why ---------- */
+.why-item{display:flex; gap:14px; padding:16px 0; border-top:1px solid var(--line)}
+.why-item:first-of-type{border-top:none; padding-top:6px}
+.mk{font-weight:700; font-size:18px; line-height:1.6; flex:none}
+.mk.no{color:var(--danger)} .mk.yes{color:var(--accent)}
+.why-item h4{font-size:18px; font-weight:700; line-height:1.6}
+.why-item p{font-size:16px; color:var(--strong); line-height:1.75}
+
+.flow{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:24px}
+.flow .step{
+  background:var(--surface); border-radius:10px; padding:13px 18px;
+  font-size:15px; font-weight:500; color:var(--strong); flex:1 1 auto; text-align:center;
+}
+.flow .arw{color:var(--muted); font-size:16px}
+
+/* ---------- what ---------- */
+.what{display:grid; grid-template-columns:1fr 1.45fr; gap:20px; align-items:stretch}
+.tint{background:var(--tint); border-radius:16px; padding:38px 36px}
+.tint h3{font-size:clamp(24px,3vw,30px); font-weight:700; line-height:1.45; margin:16px 0 14px}
+.tint p{font-size:17px; line-height:1.85; color:var(--strong)}
+.num{font-family:var(--mono); font-size:13px; font-weight:500; color:var(--accent)}
+.what-card h3{font-size:20px; margin:10px 0 8px}
+.what-card p{font-size:15.5px; line-height:1.75}
+
+/* ---------- surprises ---------- */
+.case h3{font-size:clamp(23px,3vw,28px); line-height:1.4; margin:14px 0 16px}
+.case .what-happened{font-size:18px; font-weight:500; line-height:1.85; color:var(--emph)}
+.case hr{border:none; height:1px; background:var(--line); margin:22px 0}
+.case .now-l{font-size:14px; font-weight:500; color:var(--muted); display:block; margin-bottom:8px}
+.case .now{font-size:18px; font-weight:500; line-height:1.85; color:var(--accent)}
+.others{display:flex; gap:24px; align-items:flex-start; margin-top:20px}
+.others .t{font-weight:700; font-size:16px; flex:none; padding-top:1px}
+.others .d{width:1px; align-self:stretch; background:var(--line); flex:none}
+.others p{font-size:16px; line-height:1.8; color:var(--strong)}
+
+/* ---------- cost ---------- */
+.cost-hero{display:flex; align-items:center; gap:44px; flex-wrap:wrap; padding:44px}
+.zero{
+  font-family:var(--mono); font-weight:700; font-size:clamp(56px,10vw,104px); line-height:1;
+  background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;
+  flex:none;
+}
+.cost-hero h3{font-size:clamp(21px,3vw,28px); line-height:1.5; margin-bottom:8px}
+.cost-hero p{font-size:16.5px; color:var(--muted); line-height:1.7}
+.tag{font-family:var(--mono); font-size:14px; font-weight:700; color:var(--accent)}
+
+/* ---------- pros / cons ---------- */
+.pc{display:grid; grid-template-columns:1.5fr 1fr; gap:36px; align-items:stretch}
+.pc > div{display:flex; flex-direction:column}
+.pc-right > .card{flex:1; display:flex; flex-direction:column; justify-content:space-between}
+.pro:last-of-type{margin-bottom:0}
+.pc h3.grp{font-size:21px; font-weight:700; display:flex; flex-wrap:wrap; gap:12px; align-items:baseline; margin-bottom:18px}
+.pc h3.grp span{font-size:15px; font-weight:400; color:var(--muted)}
+.pro{display:flex; align-items:center; gap:24px; margin-bottom:14px}
+.pro .k{width:58px; flex:none; font-size:18px; font-weight:700; color:var(--accent)}
+.pro .d{width:1px; align-self:stretch; background:var(--line); flex:none}
+.pro h4{font-size:19px; font-weight:700; line-height:1.5}
+.pro p{font-size:15.5px; color:var(--strong); line-height:1.7}
+.con{display:flex; gap:12px; padding:18px 0; border-top:1px solid var(--line)}
+.con:first-of-type{border-top:none; padding-top:0}
+.con:last-of-type{padding-bottom:0}
+.con .mk{color:var(--amber); font-size:16px}
+.con h4{font-size:16.5px; font-weight:700; line-height:1.55}
+.con p{font-size:15px; color:var(--strong); line-height:1.7}
+
+/* ---------- footer ---------- */
+footer{padding:56px 0 80px; border-top:1px solid var(--line)}
+footer p{font-size:14.5px; color:var(--muted); line-height:1.9}
+footer a{font-family:var(--mono); font-size:14.5px}
+
+/* ---------- responsive ---------- */
+@media (max-width:900px){
+  .g2,.g3,.what,.pc{grid-template-columns:1fr}
+  .sec{padding:60px 0}
+  .hero{padding:72px 0 56px}
+  .cost-hero{gap:22px; padding:32px}
+  .pro{align-items:flex-start}
+}
+@media print{
+  body{background:#fff}
+  .sec{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="bar" style="width:180px;height:12px;border-radius:6px"></div>
+    <h1>🍩 Donut AI Note</h1>
+    <p class="sub">自己做的會議筆記工具：在瀏覽器按下錄音，Gemini 產出逐字稿、依議題分段的摘要與待辦，自動寫進 Notion。</p>
+    <div class="chips">
+      <span class="chip">全程本機執行</span>
+      <span class="chip">零費用</span>
+      <span class="chip">全繁體中文</span>
+      <span class="chip">v1.8，151 個測試全綠</span>
+    </div>
+  </div>
+</header>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="bar"></div>
+      <p class="eyebrow">01 — Why</p>
+      <h2>為什麼自己做一個？</h2>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <p class="label">BEFORE</p>
+        <h3 style="margin:10px 0 18px">原本用 Notion AI 筆記寫手</h3>
+        <div class="why-item">
+          <span class="mk no">✕</span>
+          <div><h4>貴</h4><p>要很高階、很貴的方案才能用。</p></div>
+        </div>
+        <div class="why-item">
+          <span class="mk no">✕</span>
+          <div><h4>不好共用</h4><p>綁在團隊最高權限的管理帳號上。</p></div>
+        </div>
+      </div>
+      <div class="card">
+        <p class="label">AFTER</p>
+        <h3 style="margin:10px 0 18px">所以自己做一個</h3>
+        <div class="why-item">
+          <span class="mk yes">✓</span>
+          <div><h4>免費</h4><p>改用 Google Gemini 免費版。</p></div>
+        </div>
+        <div class="why-item">
+          <span class="mk yes">✓</span>
+          <div><h4>資料留在自己手上</h4><p>跑在自己的 Mac，寫進自己的 Notion。</p></div>
+        </div>
+        <div class="why-item">
+          <span class="mk yes">✓</span>
+          <div><h4>引擎可抽換</h4><p>之後可以換成 GPT 等其他模型。</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="flow">
+      <span class="step">瀏覽器按下錄音</span><span class="arw">→</span>
+      <span class="step">本機 Node 伺服器</span><span class="arw">→</span>
+      <span class="step">Gemini 分析</span><span class="arw">→</span>
+      <span class="step">摘要 · 待辦</span><span class="arw">→</span>
+      <span class="step">寫進 Notion</span>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="bar"></div>
+      <p class="eyebrow">02 — What it does</p>
+      <h2>這個工具可以做到哪些事</h2>
+    </div>
+    <div class="what">
+      <div class="tint">
+        <h3>錄完，筆記就在 Notion 裡了</h3>
+        <p>按下停止之後不用再做任何事——逐字稿、議題摘要、待辦，全部自動寫成資料庫裡的一列。</p>
+      </div>
+      <div class="grid g2">
+        <div class="card what-card"><p class="num">01</p><h3>瀏覽器直接錄音</h3><p>可暫停；滿三小時自動停止。</p></div>
+        <div class="card what-card"><p class="num">02</p><h3>產出逐字稿</h3><p>全繁體中文的純段落。</p></div>
+        <div class="card what-card"><p class="num">03</p><h3>依議題分段的摘要</h3><p>寒暄與離題會被略過。</p></div>
+        <div class="card what-card"><p class="num">04</p><h3>待辦可以直接打勾</h3><p>Notion 原生的核取方塊，不是純文字。</p></div>
+        <div class="card what-card" style="grid-column:1/-1"><p class="num">05</p><h3>分析在背景跑</h3><p>按下停止，就能直接去錄下一場。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="bar"></div>
+      <p class="eyebrow">03 — Surprises</p>
+      <h2>沒料到的情境，邊用邊修</h2>
+      <p class="lede">這兩個情境不是只有我會遇到——開長會議、或忘了按停止，誰都可能碰上。</p>
+    </div>
+    <div class="grid g2">
+      <div class="card case">
+        <p class="label">重點情境 01</p>
+        <h3>撞到 Gemini 每日額度</h3>
+        <p class="what-happened">只送出 52 次請求就被擋下——算的是 token 量，不是次數。</p>
+        <hr>
+        <span class="now-l">現在改成</span>
+        <p class="now">錄音留在「待分析」清單，訊息會告訴你幾點恢復。</p>
+      </div>
+      <div class="card case">
+        <p class="label">重點情境 02</p>
+        <h3>錄音忘了關，隔天還在錄</h3>
+        <p class="what-happened">113MB、2.3 小時。再久一點就超過上傳上限，救不回來。</p>
+        <hr>
+        <span class="now-l">現在改成</span>
+        <p class="now">錄滿三小時自動停止，並直接送去分析。</p>
+      </div>
+    </div>
+    <div class="card others">
+      <span class="t">其他修掉的</span>
+      <span class="d"></span>
+      <p>重試會把同一份錄音存出六份複本、雲端那份從來沒人刪、埠號被別的專案靜默佔走、常駐之後暴露面變成全天候——這四個之外，還有一堆大大小小的坑，都是邊用邊發現、邊修掉的。</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="bar"></div>
+      <p class="eyebrow">04 — Cost</p>
+      <h2>是否有費用產生？</h2>
+    </div>
+    <div class="card cost-hero">
+      <span class="zero">NT$0</span>
+      <div>
+        <h3>到目前為止，這個工具沒有產生任何費用。</h3>
+        <p>而原本的 Notion AI 筆記寫手，需要很高階、很貴的方案才能用。</p>
+      </div>
+    </div>
+    <div class="grid g3" style="margin-top:20px">
+      <div class="card"><p class="tag">NT$0</p><h3 style="margin:8px 0 8px">分析</h3><p>Google Gemini 免費版，金鑰自己申請。</p></div>
+      <div class="card"><p class="tag">NT$0</p><h3 style="margin:8px 0 8px">執行環境</h3><p>自己的 Mac，沒有雲端主機。</p></div>
+      <div class="card"><p class="tag">NT$0</p><h3 style="margin:8px 0 8px">輸出</h3><p>現有的 Notion 帳號，不必開通 AI。</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="bar"></div>
+      <p class="eyebrow">05 — Pros &amp; cons</p>
+      <h2>好在哪，又有哪些限制</h2>
+    </div>
+    <div class="pc">
+      <div>
+        <h3 class="grp">優點 <span>完全免費，而且資料留在自己手上</span></h3>
+        <div class="card pro">
+          <span class="k">費用</span><span class="d"></span>
+          <div><h4>完全免費</h4><p>到目前為止 0 元，也不需要昂貴的 Notion 方案。</p></div>
+        </div>
+        <div class="card pro">
+          <span class="k">隱私</span><span class="d"></span>
+          <div><h4>錄音不上共用伺服器</h4><p>本機那份與雲端那份，分析完都會刪掉。</p></div>
+        </div>
+        <div class="card pro">
+          <span class="k">歸檔</span><span class="d"></span>
+          <div><h4>結果直接長在 Notion</h4><p>自動寫成資料庫的一列，待辦是可以打勾的核取方塊。</p></div>
+        </div>
+        <div class="card pro">
+          <span class="k">結構</span><span class="d"></span>
+          <div><h4>摘要依議題分段</h4><p>不是一段散文，回頭找「那件事討論到哪」很快。</p></div>
+        </div>
+      </div>
+      <div class="pc-right">
+        <h3 class="grp">小缺點 <span>都有對應的做法</span></h3>
+        <div class="card">
+          <div class="con"><span class="mk">!</span><div><h4>額度滿的當下無法分析</h4><p>台灣時間 15:00 或 16:00 恢復，錄音不會遺失。</p></div></div>
+          <div class="con"><span class="mk">!</span><div><h4>尖峰時段重試燒額度較快</h4><p>一次分析最多是 4 次完整請求。</p></div></div>
+          <div class="con"><span class="mk">!</span><div><h4>逐字稿不標講者</h4><p>整份是純段落，誰說的要自己回想。</p></div></div>
+          <div class="con"><span class="mk">!</span><div><h4>平台與長度有限制</h4><p>只支援 macOS ＋ Chrome，錄音三小時上限。</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer>
+  <div class="wrap">
+    <p>開源，MIT License　·　<a href="https://github.com/uatcathay/donut-ai-note">github.com/uatcathay/donut-ai-note</a></p>
+    <p>僅支援 macOS ＋ Google Chrome，需要 Node.js 20 以上。錄音會上傳到 Gemini 分析，分析結束後程式會主動刪除雲端那份。</p>
+  </div>
+</footer>
+
+</body>
+</html>

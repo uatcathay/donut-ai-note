@@ -6,6 +6,10 @@
 > 常駐伺服器用的是 macOS 的 LaunchAgent、App 視窗用的是 Chrome 的 PWA 機制、
 > log 寫在 `~/Library/Logs/`——這三項都沒有 Windows／Linux 的對應實作。
 
+**第一次安裝建議看 [`docs/安裝指南.html`](docs/安裝指南.html)**（用瀏覽器打開）。
+那份是給團隊成員的圖文版，八個步驟每一步都附上「怎麼知道成功了」，還有一段可以直接貼給 AI 助理代勞的提示詞。
+底下這份 README 是給熟悉終端機的人看的速查版。
+
 ## 一、安裝
 
 需要 Node.js 20 以上。

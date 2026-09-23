@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Donut AI Note 開箱指南</title>
+<meta name="description" content="Donut AI Note 的安裝與驗收指南：八個步驟，每一步都附上怎麼確認成功。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Azeret+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+  :root {
+    --glaze: #F9C05C;
+    --berry: #F52D8E;
+
+    --ground: #F5F5F5;
+    --surface: #FFFFFF;
+    --sunk: #EFEFEF;
+    --ink: #1a1a1a;
+    --ink-soft: #494949;
+    --ink-mute: #707070;
+    --line: #E2E2E2;
+    --line-firm: #CFCFCF;
+
+    --ok: #1a8a4a;
+    --warn: #c0392b;
+    --warn-bg: rgba(192, 57, 43, .08);
+
+    --display: 'Archivo', 'Noto Sans TC', -apple-system, sans-serif;
+    --sans: 'Noto Sans TC', -apple-system, 'PingFang TC', sans-serif;
+    --mono: 'Azeret Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131313;
+      --surface: #1C1C1C;
+      --sunk: #101010;
+      --ink: #f2f2f2;
+      --ink-soft: #c8c8c8;
+      --ink-mute: #909090;
+      --line: #2C2C2C;
+      --line-firm: #3A3A3A;
+      --ok: #4ade80;
+      --warn: #ff6b5e;
+      --warn-bg: rgba(255, 107, 94, .10);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131313;
+    --surface: #1C1C1C;
+    --sunk: #101010;
+    --ink: #f2f2f2;
+    --ink-soft: #c8c8c8;
+    --ink-mute: #909090;
+    --line: #2C2C2C;
+    --line-firm: #3A3A3A;
+    --ok: #4ade80;
+    --warn: #ff6b5e;
+    --warn-bg: rgba(255, 107, 94, .10);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+  .inner { max-width: 900px; margin: 0 auto; padding: 0 32px; }
+
+  /* ══ 開場：淺底，氣勢來自字級與留白，漸層只在背後透一點光 ══ */
+  .hero { position: relative; overflow: hidden; padding: 128px 0 96px; }
+  .hero::before {
+    content: ''; position: absolute; inset: -46% 0 auto -14%;
+    width: 72%; aspect-ratio: 1;
+    background: radial-gradient(circle at 44% 46%,
+      rgba(249, 192, 92, .30) 0%, rgba(245, 45, 142, .16) 40%, transparent 70%);
+    filter: blur(36px); pointer-events: none;
+  }
+  .hero .inner { position: relative; }
+  .ring {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: conic-gradient(from 140deg, var(--glaze), var(--berry), var(--glaze));
+    display: grid; place-items: center; margin-bottom: 48px;
+  }
+  .ring::after { content: ''; width: 32px; height: 32px; border-radius: 50%; background: var(--ground); }
+  .hero h1 {
+    margin: 0 0 30px; font-family: var(--display);
+    font-size: clamp(50px, 8.6vw, 92px); font-weight: 800;
+    letter-spacing: -.038em; line-height: 1.22; text-wrap: balance; color: var(--ink);
+  }
+  .hero h1 .cn { font-family: var(--sans); font-weight: 900; letter-spacing: -.015em; }
+  .lede { margin: 0; font-size: 20px; line-height: 1.8; color: var(--ink-soft); }
+  .facts { display: flex; flex-wrap: wrap; gap: 10px; margin: 48px 0 0; padding: 0; list-style: none; }
+  .facts li {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .04em;
+    padding: 7px 14px; border: 1px solid var(--line-firm); border-radius: 999px; color: var(--ink-soft);
+  }
+  .hero-rule { height: 1px; background: var(--line); border: 0; margin: 0; }
+
+  /* ══ 捷徑帶 ══ */
+  .fast { padding: 88px 0 0; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--berry);
+    margin: 0 0 16px;
+  }
+  /* 這個標題整句都是中文，就整句用中文字體與同一個字重。
+     先前只把前半包進 .cn，後半退回 Archivo 找不到中文字、落到 700，同一句出現兩種字重 */
+  .fast h2 {
+    margin: 0 0 20px; font-family: var(--sans); font-size: clamp(32px, 4.6vw, 48px);
+    font-weight: 900; letter-spacing: -.028em; line-height: 1.42; text-wrap: balance;
+  }
+  .fast > .inner > p { margin: 0 0 28px; color: var(--ink-soft); }
+  .prompt { position: relative; margin-bottom: 20px; }
+  .prompt pre {
+    margin: 0; padding: 26px 26px 62px; white-space: pre-wrap; word-break: break-word;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 5px solid var(--berry); border-radius: 4px;
+    font-family: var(--sans); font-size: 15px; line-height: 1.85; color: var(--ink);
+  }
+  .copy {
+    position: absolute; bottom: 16px; right: 16px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .04em;
+    padding: 8px 14px; border: 1px solid var(--line-firm); border-radius: 999px;
+    background: var(--ground); color: var(--ink-soft); cursor: pointer;
+    transition: color .18s, border-color .18s, background .18s;
+  }
+  .copy:hover { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+  .copy:focus-visible { outline: 2px solid var(--berry); outline-offset: 3px; }
+  .copy.done { color: var(--ok); border-color: var(--ok); background: var(--ground); }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .duo section { display: flex; flex-direction: column; gap: 10px; }
+  .duo h3 {
+    margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute);
+    padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .duo ul { margin: 0; padding-left: 22px; font-size: 15px; }
+  .duo li + li { margin-top: 8px; }
+  .duo li::marker { color: var(--glaze); }
+  /* 選擇器要寫到 .fast > .inner > .aside，否則會被 .fast > .inner > p 壓過去
+     （那條特異性 0-2-1，單寫 .aside 只有 0-1-0） */
+  .fast > .inner > .aside { margin: 56px 0 0; font-size: 15px; color: var(--ink-mute); }
+  .aside strong { color: var(--ink); }
+
+  /* 中文段落齊左齊右：右緣不齊時，中文的方塊字會讓鋸齒特別明顯 */
+  .lede, .fast > .inner > p, .aside, .chapter-head p,
+  .step p, .verify p, .flag p, .duo li, ol.inner-list li,
+  .trial span, td { text-align: justify; text-justify: inter-ideograph; }
+
+  /* ══ 章節標頭 ══ */
+  .chapter { padding: 96px 0 0; }
+  .chapter-head { margin-bottom: 56px; }
+  .chapter-head h2 {
+    margin: 0; font-family: var(--display); font-size: clamp(32px, 4.6vw, 48px);
+    font-weight: 700; letter-spacing: -.028em; line-height: 1.42; text-wrap: balance;
+  }
+  .chapter-head h2 .cn { font-family: var(--sans); font-weight: 900; }
+  .chapter-head p { margin: 16px 0 0; color: var(--ink-soft); }
+
+  /* ══ 步驟：巨大的漸層數字撐起節奏 ══ */
+  .step { display: grid; grid-template-columns: 116px 1fr; gap: 32px; padding-bottom: 72px; }
+  .step + .step { border-top: 1px solid var(--line); padding-top: 72px; }
+  .idx {
+    font-family: var(--display); font-size: 76px; font-weight: 800; line-height: .82;
+    letter-spacing: -.05em; font-variant-numeric: tabular-nums;
+    background: linear-gradient(145deg, var(--glaze), var(--berry));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .step-body { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+  .step h3 {
+    margin: 0; font-size: 27px; font-weight: 900; line-height: 1.5;
+    letter-spacing: -.01em; text-wrap: balance;
+  }
+  .step h3 .en { font-family: var(--display); font-weight: 700; letter-spacing: -.02em; }
+  .step p { margin: 0; }
+  .dim { color: var(--ink-mute); font-size: 15px; }
+
+  .cmd { position: relative; }
+  .cmd pre {
+    margin: 0; padding: 22px 26px; overflow-x: auto;
+    background: var(--sunk); border: 1px solid var(--line); border-radius: 4px;
+    font-family: var(--mono); font-size: 14px; line-height: 1.9; color: var(--ink);
+  }
+  .cmd pre .p { color: var(--ink-mute); user-select: none; }
+  .cmd .copy { bottom: 14px; right: 14px; }
+
+  /* 每一步的驗證：琥珀左界，與步驟本文明確分層 */
+  .verify { border-left: 4px solid var(--glaze); padding: 4px 0 4px 22px; display: flex; flex-direction: column; gap: 8px; }
+  .verify .tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  .verify p { margin: 0; font-size: 16px; }
+
+  code {
+    font-family: var(--mono); font-size: .86em;
+    background: var(--sunk); padding: 2px 7px; border-radius: 3px;
+  }
+  .cmd code, .prompt code { background: none; padding: 0; }
+
+  .flag {
+    border: 1px solid var(--line); border-left: 4px solid var(--line-firm);
+    border-radius: 0 4px 4px 0; padding: 18px 22px; background: var(--surface); font-size: 16px;
+  }
+  .flag.hot { border-color: var(--warn); border-left-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+  .flag.hot strong { color: var(--warn); }
+  .flag p { margin: 0 0 10px; }
+  .flag p:last-child { margin: 0; }
+  .flag strong { color: var(--ink); }
+
+  /* 縮排要放得下標記。等寬字的「1.」加上間隙約 30px，原本 22px 會讓標記溢出容器左邊。
+     不用 display:flex——清單本來就是垂直排列，而 flex 會干擾 ::marker 的定位 */
+  ol.inner-list { margin: 0; padding-left: 40px; }
+  ol.inner-list li + li { margin-top: 12px; }
+  ol.inner-list li::marker { color: var(--ink-mute); font-family: var(--mono); font-size: .9em; }
+  ol.inner-list b { font-weight: 700; }
+
+  /* ══ 驗收 ══ */
+  .trials { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .trial { background: var(--surface); padding: 26px 28px; display: grid; grid-template-columns: 56px 1fr; gap: 20px; align-items: baseline; }
+  .trial .n {
+    font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: -.04em;
+    color: var(--ink-mute); font-variant-numeric: tabular-nums;
+  }
+  .trial b { display: block; font-size: 19px; font-weight: 900; margin-bottom: 6px; }
+  .trial span { color: var(--ink-soft); font-size: 16px; }
+
+  /* ══ 疑難排解 ══ */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; min-width: 680px; background: var(--surface); font-size: 16px; }
+  th, td { padding: 18px 22px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-mute); background: var(--sunk);
+    text-align: left;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; width: 27%; }
+  td:nth-child(2) { color: var(--ink-mute); width: 25%; }
+  td:last-child { color: var(--ink-soft); }
+
+  footer { margin-top: 112px; border-top: 1px solid var(--line); color: var(--ink-mute); padding: 48px 0 96px; font-size: 15px; }
+  footer p { margin: 0 0 14px; }
+  footer p:last-child { margin: 0; }
+  footer strong { color: var(--ink); }
+  footer code { background: var(--sunk); color: var(--ink); }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; }
+    .inner { padding: 0 20px; }
+    .hero { padding: 84px 0 72px; }
+    .step { grid-template-columns: 1fr; gap: 14px; }
+    .idx { font-size: 56px; }
+    .duo { grid-template-columns: 1fr; }
+    .trial { grid-template-columns: 40px 1fr; gap: 14px; padding: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="inner">
+    <div class="ring" aria-hidden="true"></div>
+    <h1>Donut AI Note<br><span class="cn">開箱指南</span></h1>
+    <p class="lede">在瀏覽器按下錄音，會議結束就有一份依議題分段的筆記，連同待辦一起寫進你的 Notion。全程在你自己的電腦上跑——除了送去 Gemini 分析的那一次，而那份雲端副本在分析結束當下就被刪掉。
+    </p>
+    <ul class="facts">
+      <li>macOS 專用</li>
+      <li>需要 Google Chrome</li>
+      <li>需要 Node.js 20+</li>
+      <li>約 20 分鐘</li>
+      <li>不產生費用</li>
+    </ul>
+  </div>
+</header>
+
+<hr class="hero-rule">
+
+<!-- ══ 捷徑 ══ -->
+<section class="fast">
+  <div class="inner">
+    <p class="eyebrow">最快的方法</p>
+    <h2>把這段話貼給 AI，就不用往下讀了</h2>
+    <p>如果你在用 Claude Code、Cursor 或任何能操作終端機的 AI 助理，不必自己照著步驟做。複製下面這段貼過去，它會一路帶著你走，缺什麼會主動問。</p>
+
+    <div class="prompt"><pre>請幫我安裝 Donut AI Note，這是一個 macOS 專用的會議錄音工具：
+https://github.com/uatcathay/donut-ai-note
+
+請幫我做這些：
+1. clone 到我的家目錄底下（不要放在「下載」資料夾）
+2. 執行 npm install，然後跑 npm test 確認測試全過
+3. 執行 bash scripts/install-launchagent.sh 讓服務常駐
+4. 確認 http://localhost:3737/ 打得開
+
+過程中需要三個金鑰（Gemini API key、Notion token、Notion 資料庫 ID）。
+請逐項告訴我去哪裡申請、以及怎麼自己填進 .env 檔——
+不要叫我把金鑰貼進對話裡。
+
+最後請告訴我怎麼在 Chrome 把它裝成 App 並固定到 Dock。
+每一步做完請告訴我要看到什麼才算成功。</pre>
+      <button class="copy" data-copy="請幫我安裝 Donut AI Note，這是一個 macOS 專用的會議錄音工具：
+https://github.com/uatcathay/donut-ai-note
+
+請幫我做這些：
+1. clone 到我的家目錄底下（不要放在「下載」資料夾）
+2. 執行 npm install，然後跑 npm test 確認測試全過
+3. 執行 bash scripts/install-launchagent.sh 讓服務常駐
+4. 確認 http://localhost:3737/ 打得開
+
+過程中需要三個金鑰（Gemini API key、Notion token、Notion 資料庫 ID）。
+請逐項告訴我去哪裡申請、以及怎麼自己填進 .env 檔——
+不要叫我把金鑰貼進對話裡。
+
+最後請告訴我怎麼在 Chrome 把它裝成 App 並固定到 Dock。
+每一步做完請告訴我要看到什麼才算成功。">複製整段</button>
+    </div>
+
+    <div class="duo">
+      <section>
+        <h3>AI 可以代勞</h3>
+        <ul>
+          <li>抓下程式、安裝相依套件</li>
+          <li>跑測試確認沒問題</li>
+          <li>設定背景服務常駐</li>
+          <li>出錯時看 log 幫你判斷</li>
+        </ul>
+      </section>
+      <section>
+        <h3>只有你能做</h3>
+        <ul>
+          <li>申請三個金鑰、填進 <code>.env</code></li>
+          <li>在 Notion 建資料庫並加 Connections</li>
+          <li>在 Chrome 按「安裝頁面為應用程式」</li>
+          <li>第一次錄音時允許麥克風</li>
+        </ul>
+      </section>
+    </div>
+
+    <p class="aside"><strong>不要把金鑰貼進 AI 對話。</strong>金鑰等同你的帳號權限，自己填進 <code>.env</code> 就好——那個檔案只留在你的電腦上，不會被上傳也不會進版控。上面的提示詞已經寫明這一點。</p>
+  </div>
+</section>
+
+<!-- ══ 八步 ══ -->
+<section class="chapter">
+  <div class="inner">
+    <div class="chapter-head">
+      <h2><span class="cn">想自己掌握每一步</span></h2>
+      <p>八個步驟，每一步下面都有一塊「怎麼知道成功了」。沒看到預期結果就先別往下走——在原地排查，比裝到第七步才發現第三步錯了容易得多。交給 AI 裝的人卡住時，也可以直接翻到最後的疑難排解。</p>
+    </div>
+
+    <div class="step">
+      <div class="idx">01</div>
+      <div class="step-body">
+        <h3>確認 <span class="en">Node.js</span> 裝好了</h3>
+        <p>Node 是這個工具的執行環境。打開「終端機」（應用程式 → 工具程式，或按 ⌘空白鍵搜尋 Terminal），貼上：</p>
+        <div class="cmd"><pre><span class="p">$ </span>node -v</pre>
+          <button class="copy" data-copy="node -v">複製</button>
+        </div>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>出現 <code>v20.x.x</code> 或更高的數字就可以了。</p>
+          <p class="dim">出現「command not found」表示還沒安裝——到 <code>nodejs.org</code> 下載 LTS 版本，一路按下一步，裝完把終端機關掉重開再試一次。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">02</div>
+      <div class="step-body">
+        <h3>把程式抓下來</h3>
+        <p>選一個放得住的位置（別放「下載」，之後不小心清掉就麻煩了），例如家目錄底下：</p>
+        <div class="cmd"><pre><span class="p">$ </span>cd ~
+<span class="p">$ </span>git clone https://github.com/uatcathay/donut-ai-note.git
+<span class="p">$ </span>cd donut-ai-note</pre>
+          <button class="copy" data-copy="cd ~
+git clone https://github.com/uatcathay/donut-ai-note.git
+cd donut-ai-note">複製</button>
+        </div>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>執行 <code>ls</code> 會看到 <code>src</code>、<code>public</code>、<code>scripts</code>、<code>README.md</code> 這些名字。</p>
+        </div>
+        <div class="flag hot">
+          <p><strong>之後不要搬動這個資料夾。</strong>背景服務記的是絕對路徑，搬走之後會失效。真的要搬，搬完重跑一次步驟 5 的指令即可。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">03</div>
+      <div class="step-body">
+        <h3>安裝相依套件</h3>
+        <div class="cmd"><pre><span class="p">$ </span>npm install</pre>
+          <button class="copy" data-copy="npm install">複製</button>
+        </div>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>跑完沒有紅色的 <code>ERR!</code>，資料夾裡多出一個 <code>node_modules</code>。接著跑 <code>npm test</code>，應該看到 <code>pass 151</code>、<code>fail 0</code>。</p>
+          <p class="dim">測試全過代表程式本身沒問題，接下來只剩你的金鑰設定。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">04</div>
+      <div class="step-body">
+        <h3>拿三把鑰匙</h3>
+        <p>先建立設定檔，再把三個值填進去。這個檔案只留在你自己的電腦上，不會被上傳，也不會進版控。</p>
+        <div class="cmd"><pre><span class="p">$ </span>cp .env.example .env
+<span class="p">$ </span>open -e .env</pre>
+          <button class="copy" data-copy="cp .env.example .env
+open -e .env">複製</button>
+        </div>
+        <p>第二行會用「文字編輯」打開設定檔。三個值分別這樣拿：</p>
+        <ol class="inner-list">
+          <li><b>GEMINI_API_KEY（必填，免費）</b><br>到 <code>aistudio.google.com/apikey</code> 用 Google 帳號登入 → Create API key → 複製整串貼到等號後面。</li>
+          <li><b>NOTION_TOKEN（想寫進 Notion 才需要）</b><br>到 <code>notion.so/my-integrations</code> → New integration → 取個名字（例如 Donut）→建立後複製 Internal Integration Token。</li>
+          <li><b>NOTION_DATABASE_ID（想寫進 Notion 才需要）</b><br>在 Notion 建一個<b>資料庫</b>放會議紀錄，每場會議會變成裡面的一列。這個資料庫必須有兩個欄位：
+            <code>Name</code>（標題型態）和 <code>Date</code>（日期型態），名字要一模一樣。</li>
+        </ol>
+        <div class="flag hot">
+          <p><strong>最容易漏的一步：把資料庫分享給 integration。</strong></p>
+          <p>在資料庫頁面右上角 <code>•••</code> → Connections → 選你剛建立的 integration。沒做這一步的話 Notion 會拒絕寫入，而錯誤訊息只會說「找不到資料庫」，很難聯想到是權限問題。</p>
+          <p>做完之後，複製資料庫網址裡 <code>notion.so/</code> 之後、<code>?</code> 之前那段 32 碼英數，貼進 <code>NOTION_DATABASE_ID</code>。</p>
+        </div>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>三行都有值、等號後面沒有多餘的空格或引號，存檔關閉。</p>
+          <p class="dim">Notion 那兩個留空也能用——結果會改存成桌面的 <code>.md</code> 檔，功能完全正常，只是少了自動歸檔。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">05</div>
+      <div class="step-body">
+        <h3>讓服務常駐</h3>
+        <p>這一步會設定成每次開機登入時自動在背景啟動，之後你不用再碰終端機。</p>
+        <div class="cmd"><pre><span class="p">$ </span>bash scripts/install-launchagent.sh</pre>
+          <button class="copy" data-copy="bash scripts/install-launchagent.sh">複製</button>
+        </div>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>終端機印出 <code>已安裝並啟動</code>。接著在 Chrome 開 <code>http://localhost:3737/</code>，應該看到一個乾淨的錄音畫面，中間一支麥克風。</p>
+          <p class="dim">如果印出「連接埠已被占用」，表示你有別的程式在用 3737。腳本會拒絕安裝而不是裝出一個壞掉的服務——把那個程式關掉再跑一次就好。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">06</div>
+      <div class="step-body">
+        <h3>裝成 <span class="en">App</span></h3>
+        <p>上一步那個網址已經能用了，但每次開瀏覽器找分頁很麻煩。把它裝成獨立的 App：</p>
+        <ol class="inner-list">
+          <li>在 Chrome <b>一般分頁</b>開 <code>http://localhost:3737/</code></li>
+          <li>點右上角 <code>⋮</code> → 投放、儲存及分享 → <b>安裝頁面為應用程式</b></li>
+          <li>確認之後，Chrome 會馬上開一個沒有網址列的獨立視窗</li>
+          <li>趁它還開著，對 Dock 上那顆甜甜圈圖示按右鍵 → 選項 → <b>保留在 Dock</b></li>
+        </ol>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>Dock 上有一顆甜甜圈，點了會開出獨立小視窗。</p>
+          <p class="dim">視窗剛開時標題列會閃一下 <code>localhost:3737</code> 再消失——那是 Chrome 在告訴你這個沒有網址列的視窗來自哪裡，所有 PWA 都這樣，不是異常。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">07</div>
+      <div class="step-body">
+        <h3>第一次錄音</h3>
+        <p>點 Dock 上的甜甜圈，標題留空，按中間的麥克風，對著電腦講十幾秒（隨便講，例如念一段今天的行程），然後按中間的方塊停止。</p>
+        <div class="flag">
+          <p><strong>第一次會跳出麥克風權限，要按「允許」。</strong>不小心按到封鎖的話，到 Chrome 設定 → 隱私權和安全性 → 網站設定 → 麥克風，把 <code>localhost:3737</code> 改回允許。</p>
+        </div>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>停止後畫面出現三個跳動的方塊和 <code>Analyzing with Gemini…</code>，下面顯示目前在做什麼（上傳音檔 → 分析錄音 → 寫入筆記）。十幾秒的錄音通常十秒內跑完。</p>
+          <p>跑完直接顯示摘要卡片，裡面有 <code>📝 Mins</code>，有談到待辦的話還會有 <code>◻️ What's next?</code>。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="idx">08</div>
+      <div class="step-body">
+        <h3>確認寫進 <span class="en">Notion</span></h3>
+        <p>回到你在步驟 4 建立的那個資料庫。</p>
+        <div class="verify">
+          <div class="tag">怎麼知道成功了</div>
+          <p>資料庫多出一列，<code>Name</code> 是 AI 給的標題、<code>Date</code> 是今天。點進去會看到議題摘要，最底下有一個叫「完整逐字稿」的子頁。</p>
+          <p class="dim">沒有新的一列，但畫面顯示成功？那多半是結果存成桌面的 <code>.md</code> 了——表示 <code>.env</code> 的 Notion 兩項沒生效，回步驟 4 檢查，特別是 Connections 那一步。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 驗收 ══ -->
+<section class="chapter">
+  <div class="inner">
+    <div class="chapter-head">
+      <h2><span class="cn">再走一次這五件事</span></h2>
+      <p>前面八步是把它裝起來，這五件是確認你日常會用到的行為都正常。</p>
+    </div>
+    <div class="trials">
+      <div class="trial"><div class="n">01</div>
+        <div><b>關掉視窗再點開</b><span>關閉 App 視窗只是關視窗，背景服務還活著。再點 Dock 圖示應該幾乎瞬間開啟。</span></div></div>
+      <div class="trial"><div class="n">02</div>
+        <div><b>重新開機</b><span>開機登入後不用做任何事，直接點 Dock 圖示就能用——服務會自己啟動。</span></div></div>
+      <div class="trial"><div class="n">03</div>
+        <div><b>錄音中按暫停再繼續</b><span>計時器會停住再接續，波形跟著停跟著動。暫停的時間不算進錄音長度。</span></div></div>
+      <div class="trial"><div class="n">04</div>
+        <div><b>分析途中按「先去錄下一場」</b><span>會回到待機頁，剛才那筆出現在下方的分析清單裡標示「分析中」，繼續在背景跑。你可以立刻開始錄下一場會議。</span></div></div>
+      <div class="trial"><div class="n">05</div>
+        <div><b>看一眼分析清單</b><span>跑完的會變成「已完成」，點「查看摘要」可以回頭看，按「移除」把那列收掉。失敗的會留在清單上顯示「待分析」，按「立即分析」可以重試——錄音不會因為分析失敗而消失。</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 疑難排解 ══ -->
+<section class="chapter">
+  <div class="inner">
+    <div class="chapter-head">
+      <h2><span class="cn">遇到問題時</span></h2>
+      <p>行為異常時第一件事是看 log：<code>~/Library/Logs/donut-ai-note.log</code>。用「主控台」App 開，或在終端機跑 <code>tail -50 ~/Library/Logs/donut-ai-note.log</code>。每一行都有時間戳記。</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>你看到的</th><th>原因</th><th>怎麼辦</th></tr></thead>
+        <tbody>
+          <tr><td>點圖示出現連線錯誤</td><td>背景服務沒在跑</td>
+            <td>終端機進到專案資料夾，重跑 <code>bash scripts/install-launchagent.sh</code></td></tr>
+          <tr><td>搬動資料夾後就壞了</td><td>服務記的是絕對路徑</td>
+            <td>同上，重跑一次安裝腳本就會用新路徑覆寫</td></tr>
+          <tr><td>Gemini 目前忙碌，已自動重試多次</td><td>Google 那端容量不足，跟你無關</td>
+            <td>錄音已保留在分析清單，過一陣子按「立即分析」。離峰時段成功率明顯較高</td></tr>
+          <tr><td>已達每日用量上限</td><td>免費版額度用完</td>
+            <td>訊息會直接告訴你幾點恢復（台灣時間下午三點或四點）。在那之前照樣可以錄，錄音會排在清單上等</td></tr>
+          <tr><td>錄完畫面說「上傳失敗」</td><td>錄音送不到本機服務</td>
+            <td>多半是服務剛重啟。按「再試一次」即可，錄音還在記憶體裡</td></tr>
+          <tr><td>Notion 沒有新的一列</td><td>integration 沒有被加進資料庫的 Connections</td>
+            <td>回步驟 4 那塊紅色提醒。這是最常漏的一步</td></tr>
+          <tr><td>麥克風沒反應</td><td>權限被封鎖</td>
+            <td>Chrome 設定 → 網站設定 → 麥克風 → 把 <code>localhost:3737</code> 改成允許</td></tr>
+          <tr><td>錄很久之後自己停了</td><td>到三小時上限，這是刻意的</td>
+            <td>再久會超過上傳大小限制，那樣整段錄音都救不回來。它會自動停止並開始分析</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="inner">
+    <p><strong>不想再用的時候</strong><br>
+      <code>bash scripts/install-launchagent.sh --uninstall</code> 停掉背景服務，再到 Chrome 的 <code>chrome://apps</code> 對 Donut AI Note 按右鍵移除。兩步都做完才算乾淨。</p>
+    <p>原始碼採 MIT 授權。內附字體（Azeret Mono、Noto Sans TC）為第三方作品，依 SIL Open Font License 1.1 散布。</p>
+  </div>
+</footer>
+
+<script>document.querySelectorAll('.copy').forEach((btn) => {btn.addEventListener('click', async () => {try {await navigator.clipboard.writeText(btn.dataset.copy);const was = btn.textContent;btn.textContent = '已複製';btn.classList.add('done');setTimeout(() => { btn.textContent = was; btn.classList.remove('done'); }, 1600);} catch {btn.textContent = '請手動選取';setTimeout(() => { btn.textContent = '複製'; }, 1600);}});});
+</script>
+</body>
+</html>
