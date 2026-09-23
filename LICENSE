@@ -18,22 +18,3 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-===============================================================================
-Third-party components
-===============================================================================
-
-The MIT license above covers this project's own source code. The fonts bundled
-in public/fonts/ are third-party works redistributed under their own license,
-the SIL Open Font License 1.1:
-
-  Azeret Mono   Copyright 2021 The Azeret Project Authors
-                https://github.com/displaay/azeret
-
-  Noto Sans TC  Copyright 2014-2021 Adobe (http://www.adobe.com/),
-                with Reserved Font Name 'Source'
-
-Full license texts are included alongside the font files:
-  public/fonts/OFL-AzeretMono.txt
-  public/fonts/OFL-NotoSansTC.txt

@@ -93,4 +93,4 @@ cp .env.example .env
 本專案原始碼採 [MIT License](LICENSE)。
 
 `public/fonts/` 內的字體為第三方作品，依 SIL Open Font License 1.1 隨專案散布，
-不在 MIT 的涵蓋範圍內——授權全文與版權聲明見 `public/fonts/`。
+不在 MIT 的涵蓋範圍內——詳見 [NOTICE](NOTICE) 與 `public/fonts/` 內的授權全文。
