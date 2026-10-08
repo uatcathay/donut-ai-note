@@ -356,6 +356,8 @@ async function refreshJobs() {
 }
 
 async function analyzeNow(id) {
+  // 紅字多半是上一次失敗留下的，重試開始後它就過時了——不清掉會一路掛到摘要頁
+  clearError();
   startingIds.add(id);
   refreshJobs();
   try {
@@ -498,6 +500,7 @@ async function sendForProcessing() {
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function renderDone(body) {
+  clearError();
   $('done-title').textContent = body.title || '';
   // 寫入 Notion 時不顯示連結——使用者不會從這裡點進去看（Notion 網頁還要再登入一次）。
   // 但輸出成 .md 時仍要顯示路徑，否則使用者不知道檔案在哪。
