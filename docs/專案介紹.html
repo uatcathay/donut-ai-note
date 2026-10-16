@@ -132,9 +132,121 @@ footer{padding:56px 0 80px; border-top:1px solid var(--line)}
 footer p{font-size:14.5px; color:var(--muted); line-height:1.9}
 footer a{font-family:var(--mono); font-size:14.5px}
 
+/* ---------- demo ---------- */
+.demo{display:grid; grid-template-columns:1fr 1.45fr; gap:44px; align-items:center}
+.demo-copy{display:flex; flex-direction:column}
+.demo-steps{display:flex; flex-direction:column; margin:0 0 28px; padding:0; list-style:none}
+.demo-steps button{
+  width:100%; display:flex; gap:16px; align-items:flex-start; text-align:left;
+  padding:16px 0 16px 20px; border:0; border-left:2px solid var(--line); background:none;
+  font:inherit; color:var(--muted); cursor:pointer; transition:border-color .25s, color .25s;
+}
+.demo-steps button:hover{color:var(--strong)}
+.demo-steps .is-active button{border-left-color:var(--accent); color:var(--fg)}
+.demo-steps .num{padding-top:4px}
+.demo-steps b{display:block; font-size:19px; line-height:1.6}
+.demo-steps small{display:block; font-size:15px; line-height:1.65; color:var(--muted)}
+.demo-toggle{
+  align-self:flex-start;
+  padding:8px 16px; border:1px solid var(--line); border-radius:999px; background:none;
+  font-family:var(--mono); font-size:13px; font-weight:500; color:var(--accent); cursor:pointer;
+}
+.demo button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+/* Mock app window: mirrors public/index.html at a smaller vertical scale */
+.win{
+  background:#F5F5F5; border:1px solid var(--line); border-radius:16px; overflow:hidden;
+  box-shadow:0 24px 48px -32px rgba(0,0,0,.35); min-width:0;
+}
+.win-bar{
+  height:38px; display:flex; align-items:center; gap:8px; padding:0 14px;
+  background:var(--surface); border-bottom:1px solid var(--line);
+}
+.win-bar i{width:11px; height:11px; border-radius:50%; background:#E0E0E0; flex:none}
+.win-bar span{flex:1; text-align:center; margin-right:47px; font-family:var(--mono); font-size:12.5px; color:var(--muted)}
+.win-body{
+  position:relative; height:560px; overflow:hidden;
+  font-family:'Azeret Mono','Noto Sans TC','PingFang TC',system-ui,sans-serif; line-height:normal; color:var(--fg);
+}
+.v{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+  padding-top:64px; transition:opacity .3s, visibility .3s;
+}
+.v[hidden]{display:flex; opacity:0; visibility:hidden}
+.v-title{
+  width:288px; max-width:calc(100% - 32px); height:calc(1.4em + 13px); margin-bottom:44px;
+  padding:6px 0; border-bottom:1px solid transparent;
+  font-size:18px; line-height:1.4; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.v-title.is-focus{border-bottom-color:#707070}
+.v-title .ph{color:#707070}
+.caret{display:inline-block; width:1px; height:1.1em; margin-left:1px; vertical-align:-.15em; background:var(--fg); animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.orb{
+  width:64px; height:64px; margin-bottom:20px; flex:none;
+  display:flex; align-items:center; justify-content:center; border-radius:12px;
+  transition:background-color .2s, transform .12s;
+}
+.orb svg{width:40px; height:40px; color:#494949}
+.cube{
+  width:24px; height:24px; border-radius:4px;
+  background:linear-gradient(135deg,#F9C05C,#F52D8E); animation:spin 3s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.v-timer{margin-bottom:20px; font-size:14px; font-variant-numeric:tabular-nums; color:#707070}
+.v-rec .v-timer{color:#494949}
+.wave{
+  width:288px; max-width:calc(100% - 24px); height:24px; margin-bottom:40px; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; gap:3px;
+}
+.wave span{
+  width:3px; height:100%; flex:none; border-radius:1.5px; background:#707070;
+  transform:scaleY(.25); transition:transform .12s ease-out;
+}
+.v-rec .wave span{background:linear-gradient(180deg,#F9C05C,#F52D8E)}
+.lb{padding:4px 10px; border-radius:6px; font-size:16px; color:#494949; transition:background-color .2s, transform .12s}
+.lb + .lb{margin-top:20px}
+.lb.danger{color:var(--danger)}
+.is-hover{background:var(--surface)}
+.is-press{transform:scale(.94)}
+.v-rec.is-paused .cube,.demo.is-stopped .cube,.demo.is-stopped .stairs i,.demo.is-stopped .caret{animation-play-state:paused}
+.stairs{display:flex; gap:9px; align-items:flex-end; margin:140px 0 20px}
+.stairs i{
+  width:18px; height:18px; border-radius:2px;
+  background:linear-gradient(135deg,#F9C05C,#F52D8E); animation:stairs 1.2s ease-in-out infinite;
+}
+.stairs i:nth-child(2){animation-delay:.15s}
+.stairs i:nth-child(3){animation-delay:.3s}
+@keyframes stairs{0%,100%{transform:translateY(0); opacity:.3} 50%{transform:translateY(-21px); opacity:1}}
+.v-proc p{font-size:16px; color:#373737}
+.v-done{padding-top:36px}
+.v-done .v-title{margin-bottom:16px}
+.preview{
+  width:calc(100% - 40px); height:390px; margin-bottom:20px; overflow-y:auto;
+  padding:24px 20px 20px; border-radius:10px; background:var(--surface);
+  font-size:14px; line-height:1.6; text-align:left; scrollbar-width:thin;
+}
+.preview h5{margin:0 0 10px; font-size:20px; font-weight:700}
+.preview h5:not(:first-child){margin-top:36px}
+.preview h6{margin:16px 0 0; font-size:16px; font-weight:600}
+.preview ul{margin:8px 0 0; padding-left:20px; list-style:disc}
+.preview ul.todo{list-style:none; padding-left:2px}
+.preview ul.todo li{position:relative; padding-left:22px; margin-bottom:4px}
+.preview ul.todo li::before{
+  content:''; position:absolute; left:0; top:4px;
+  width:12px; height:12px; border:1.5px solid #707070; border-radius:3px;
+}
+.preview small{display:block; margin-top:36px; font-size:12px; color:#707070}
+.cursor{
+  position:absolute; left:0; top:0; z-index:5; width:22px; height:22px; pointer-events:none;
+  transition:transform .75s cubic-bezier(.45,.05,.25,1);
+}
+.cursor svg{width:100%; height:100%; transition:transform .12s; transform-origin:4px 3px}
+.cursor.is-down svg{transform:scale(.82)}
+
 /* ---------- responsive ---------- */
 @media (max-width:900px){
-  .g2,.g3,.what,.pc{grid-template-columns:1fr}
+  .g2,.g3,.what,.pc,.demo{grid-template-columns:1fr}
   .sec{padding:60px 0}
   .hero{padding:72px 0 56px}
   .cost-hero{gap:22px; padding:32px}
@@ -236,7 +348,78 @@ footer a{font-family:var(--mono); font-size:14.5px}
   <div class="wrap">
     <div class="sec-head">
       <div class="bar"></div>
-      <p class="eyebrow">03 — Surprises</p>
+      <p class="eyebrow">03 — Demo</p>
+      <h2>實際用起來長這樣</h2>
+      <p class="lede">照實際介面重現：開始錄音、中途暫停，再按下停止讓 Gemini 整理成待辦與摘要。點任一個步驟可以直接跳過去看。</p>
+    </div>
+    <div class="demo" id="demo">
+      <div class="demo-copy">
+        <ol class="demo-steps">
+          <li><button type="button" data-step="0"><span class="num">01</span><span><b>開始錄音</b><small>輸入會議標題，按下麥克風。</small></span></button></li>
+          <li><button type="button" data-step="1"><span class="num">02</span><span><b>暫停與繼續</b><small>中場休息按 Pause，回來按 Resume。</small></span></button></li>
+          <li><button type="button" data-step="2"><span class="num">03</span><span><b>AI 分析結果</b><small>按下中央方塊停止，拿到待辦與議題摘要。</small></span></button></li>
+        </ol>
+        <button type="button" class="demo-toggle">暫停示範</button>
+      </div>
+      <div class="win" role="img" aria-label="Donut AI Note 操作示範動畫：輸入標題、開始錄音、暫停後繼續，最後產出待辦與議題摘要">
+        <div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Donut AI Note</span></div>
+        <div class="win-body" aria-hidden="true">
+          <div class="v v-idle">
+            <div class="v-title" data-title></div>
+            <div class="orb" data-mic>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>
+              </svg>
+            </div>
+            <div class="v-timer">00:00</div>
+            <div class="wave"></div>
+          </div>
+          <div class="v v-rec" hidden>
+            <div class="v-title">Q4 產品規劃週會</div>
+            <div class="orb" data-stop><span class="cube"></span></div>
+            <div class="v-timer" data-timer>00:00</div>
+            <div class="wave" data-wave></div>
+            <div class="lb" data-pause>Pause</div>
+            <div class="lb danger">Restart</div>
+          </div>
+          <div class="v v-proc" hidden>
+            <div class="stairs"><i></i><i></i><i></i></div>
+            <p>Analyzing with Gemini…</p>
+          </div>
+          <div class="v v-done" hidden>
+            <div class="v-title">Q4 產品規劃週會</div>
+            <div class="preview" data-preview>
+              <h5>◻️ What's next?</h5>
+              <ul class="todo">
+                <li>整理使用者訪談重點，週五前分享</li>
+                <li>確認 Notion 資料庫的欄位命名</li>
+                <li>下週一前回覆首頁設計稿意見</li>
+              </ul>
+              <h5>📝 Mins</h5>
+              <h6>上線時程</h6>
+              <ul><li>錄音功能維持 10/20 上線</li><li>分析失敗的提示文案下週定稿</li></ul>
+              <h6>使用者訪談回饋</h6>
+              <ul><li>多數人希望錄完就能直接看到待辦</li><li>長會議的摘要分段要更清楚</li></ul>
+              <h6>設計稿檢視</h6>
+              <ul><li>首頁按鈕放大，單手也好點</li></ul>
+              <small>（完整逐字稿已另存在 Notion）</small>
+            </div>
+            <div class="lb">New AI Note</div>
+          </div>
+          <div class="cursor">
+            <svg viewBox="0 0 24 24"><path d="M4 3l15 7.5-6.4 1.7L9.9 18.5z" fill="#1a1a1a" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="bar"></div>
+      <p class="eyebrow">04 — Surprises</p>
       <h2>沒料到的情境，邊用邊修</h2>
       <p class="lede">這兩個情境不是只有我會遇到——開長會議、或忘了按停止，誰都可能碰上。</p>
     </div>
@@ -270,7 +453,7 @@ footer a{font-family:var(--mono); font-size:14.5px}
   <div class="wrap">
     <div class="sec-head">
       <div class="bar"></div>
-      <p class="eyebrow">04 — Cost</p>
+      <p class="eyebrow">05 — Cost</p>
       <h2>是否有費用產生？</h2>
     </div>
     <div class="card cost-hero">
@@ -292,7 +475,7 @@ footer a{font-family:var(--mono); font-size:14.5px}
   <div class="wrap">
     <div class="sec-head">
       <div class="bar"></div>
-      <p class="eyebrow">05 — Pros &amp; cons</p>
+      <p class="eyebrow">06 — Pros &amp; cons</p>
       <h2>好在哪，又有哪些限制</h2>
     </div>
     <div class="pc">
@@ -335,6 +518,213 @@ footer a{font-family:var(--mono); font-size:14.5px}
     <p>僅支援 macOS ＋ Google Chrome，需要 Node.js 20 以上。錄音會上傳到 Gemini 分析，分析結束後程式會主動刪除雲端那份。</p>
   </div>
 </footer>
+
+<script>
+(() => {
+  const demo = document.getElementById('demo');
+  if (!demo) return;
+  const q = (sel) => demo.querySelector(sel);
+  const body = q('.win-body');
+  const cursor = q('.cursor');
+  const titleEl = q('[data-title]');
+  const timerEl = q('[data-timer]');
+  const pauseEl = q('[data-pause]');
+  const previewEl = q('[data-preview]');
+  const stepItems = [...demo.querySelectorAll('.demo-steps li')];
+  const toggleBtn = q('.demo-toggle');
+  const views = { idle: q('.v-idle'), rec: q('.v-rec'), proc: q('.v-proc'), done: q('.v-done') };
+
+  const TITLE = 'Q4 產品規劃週會';
+  const PLACEHOLDER = '會議標題（空白就讓 AI 命名）';
+  const BARS = 48;
+  const CANCEL = Symbol('cancel');
+
+  demo.querySelectorAll('.wave').forEach((wave) => { wave.innerHTML = '<span></span>'.repeat(BARS); });
+  const recBars = [...q('[data-wave]').children];
+
+  let runId = 0;
+  let inView = false;
+  let userStopped = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let waveOn = false;
+  let seconds = 0;
+
+  const isRunning = () => inView && !userStopped;
+
+  // Pausable, cancellable delay: time only advances while the demo is visible and playing
+  const wait = (ms, id) => new Promise((resolve, reject) => {
+    let left = ms;
+    const tick = setInterval(() => {
+      if (id !== runId) { clearInterval(tick); reject(CANCEL); return; }
+      if (!isRunning()) return;
+      left -= 50;
+      if (left <= 0) { clearInterval(tick); resolve(); }
+    }, 50);
+  });
+
+  const show = (name) => Object.entries(views).forEach(([key, el]) => { el.hidden = key !== name; });
+  const setStep = (index) => stepItems.forEach((li, i) => li.classList.toggle('is-active', i === index));
+  const fmt = (total) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+
+  const renderTitle = (text, focused) => {
+    titleEl.classList.toggle('is-focus', focused);
+    titleEl.innerHTML = text
+      ? `${text}${focused ? '<span class="caret"></span>' : ''}`
+      : `<span class="ph">${PLACEHOLDER}</span>`;
+  };
+
+  const setRecording = (total, paused) => {
+    seconds = total;
+    timerEl.textContent = fmt(seconds);
+    views.rec.classList.toggle('is-paused', paused);
+    pauseEl.textContent = paused ? 'Resume' : 'Pause';
+    waveOn = !paused;
+    if (paused) recBars.forEach((bar) => { bar.style.transform = 'scaleY(.12)'; });
+    show('rec');
+  };
+
+  const moveTo = (el, id, dx = 0.5, dy = 0.5) => {
+    const box = body.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    cursor.style.transform = `translate(${r.left - box.left + r.width * dx - 4}px, ${r.top - box.top + r.height * dy - 3}px)`;
+    return wait(800, id);
+  };
+
+  // Step the pointer aside after a click so it does not cover the text being typed or the timer
+  const nudge = (id) => {
+    const [, x, y] = cursor.style.transform.match(/translate\(([-\d.]+)px, ([-\d.]+)px\)/) || [];
+    if (x !== undefined) cursor.style.transform = `translate(${+x + 46}px, ${+y + 34}px)`;
+    return wait(300, id);
+  };
+
+  const parkCursor = () => {
+    cursor.style.transform = `translate(${body.clientWidth * 0.72}px, ${body.clientHeight * 0.9}px)`;
+  };
+
+  const click = async (el, id) => {
+    el.classList.add('is-hover');
+    await wait(180, id);
+    cursor.classList.add('is-down');
+    el.classList.add('is-press');
+    await wait(160, id);
+    cursor.classList.remove('is-down');
+    el.classList.remove('is-press', 'is-hover');
+  };
+
+  const record = async (count, id) => {
+    for (let i = 0; i < count; i++) {
+      await wait(1000, id);
+      seconds += 1;
+      timerEl.textContent = fmt(seconds);
+    }
+  };
+
+  const sceneStart = async (id) => {
+    setStep(0);
+    renderTitle('', false);
+    show('idle');
+    parkCursor();
+    await wait(800, id);
+    await moveTo(titleEl, id);
+    await click(titleEl, id);
+    renderTitle('', true);
+    await nudge(id);
+    for (let i = 1; i <= TITLE.length; i++) {
+      await wait(120, id);
+      renderTitle(TITLE.slice(0, i), true);
+    }
+    await wait(500, id);
+    await moveTo(q('[data-mic]'), id);
+    await click(q('[data-mic]'), id);
+    renderTitle(TITLE, false);
+    setRecording(0, false);
+    nudge(id).catch(() => {});
+    await record(3, id);
+  };
+
+  const scenePause = async (id) => {
+    setStep(1);
+    await moveTo(pauseEl, id);
+    await click(pauseEl, id);
+    setRecording(seconds, true);
+    await wait(2400, id);
+    await click(pauseEl, id);
+    setRecording(seconds, false);
+    await record(2, id);
+  };
+
+  const sceneResult = async (id) => {
+    setStep(2);
+    const stopEl = q('[data-stop]');
+    await moveTo(stopEl, id);
+    await click(stopEl, id);
+    waveOn = false;
+    show('proc');
+    parkCursor();
+    await wait(2800, id);
+    previewEl.scrollTop = 0;
+    show('done');
+    await wait(2000, id);
+    const distance = previewEl.scrollHeight - previewEl.clientHeight;
+    for (let t = 1; t <= 50; t++) {
+      await wait(50, id);
+      previewEl.scrollTop = distance * (t / 50);
+    }
+    await wait(3500, id);
+  };
+
+  // Jumping straight into a later step needs the state that earlier steps would have left behind
+  const prepare = (step) => {
+    if (step === 0) return;
+    renderTitle(TITLE, false);
+    setRecording(step === 1 ? 3 : 5, false);
+    parkCursor();
+  };
+
+  const run = async (fromStep) => {
+    const id = ++runId;
+    prepare(fromStep);
+    try {
+      for (let step = fromStep; ; step = 0) {
+        if (step === 0) await sceneStart(id);
+        if (step <= 1) await scenePause(id);
+        await sceneResult(id);
+      }
+    } catch (err) {
+      if (err !== CANCEL) throw err;
+    }
+  };
+
+  setInterval(() => {
+    if (!waveOn || !isRunning()) return;
+    recBars.forEach((bar, i) => {
+      const envelope = 0.35 + 0.65 * Math.sin((i / (BARS - 1)) * Math.PI);
+      bar.style.transform = `scaleY(${(0.12 + Math.random() * 0.88 * envelope).toFixed(2)})`;
+    });
+  }, 120);
+
+  const syncToggle = () => {
+    toggleBtn.textContent = userStopped ? '播放示範' : '暫停示範';
+    demo.classList.toggle('is-stopped', !isRunning());
+  };
+
+  toggleBtn.addEventListener('click', () => { userStopped = !userStopped; syncToggle(); });
+  stepItems.forEach((li, i) => li.querySelector('button').addEventListener('click', () => {
+    userStopped = false;
+    syncToggle();
+    run(i);
+  }));
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; syncToggle(); }, { threshold: 0.35 })
+      .observe(q('.win'));
+  } else {
+    inView = true;
+  }
+
+  syncToggle();
+  run(0);
+})();
+</script>
 
 </body>
 </html>
