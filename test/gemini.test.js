@@ -45,8 +45,35 @@ test('buildPrompt 要求依議題分段，並另外產出待辦事項', () => {
   assert.doesNotMatch(p, /"keyPoints"/);
 });
 
-test('buildPrompt 要求略過寒暄與離題閒聊', () => {
-  assert.match(buildPrompt(), /寒暄|閒聊/);
+test('buildPrompt 只略過開場寒暄，閒聊另成最後一個議題', () => {
+  const p = buildPrompt();
+  assert.match(p, /寒暄/);
+  // 舊版連閒聊一起略過，2026-10-20 的座談因此把講者的經歷與生活分享幾乎刪光
+  assert.doesNotMatch(p, /略過[^。\n]*閒聊/);
+  assert.match(p, /閒聊[^。\n]*最後一個議題/);
+});
+
+// 2026-10-20 的座談與 Notion AI 對照：重點被概括成放在哪場會議都成立的通論，
+// 數字、人名、產品名與例子幾乎都不見了
+test('buildPrompt 要求重點保留具體內容，不要概括成通論', () => {
+  const p = buildPrompt();
+  assert.match(p, /數字/);
+  assert.match(p, /人名/);
+  assert.match(p, /例子/);
+  assert.match(p, /通論/);
+  assert.doesNotMatch(p, /可行動/, '「可行動」會把分享型的內容擠成空泛的結論');
+});
+
+test('buildPrompt 要求講者的經歷、看法與動機都算內容', () => {
+  assert.match(buildPrompt(), /經歷/);
+});
+
+// 同一場約一小時的座談，逐字稿只有約 9,000 字，整段 Figma 的討論不見了，還有一段重複
+test('buildPrompt 要求逐字稿完整，不得摘要、刪減或重複', () => {
+  const p = buildPrompt();
+  assert.match(p, /逐字稿[^。\n]*完整/);
+  assert.match(p, /不要摘要/);
+  assert.match(p, /重複/);
 });
 
 // 筆記正文才是這個 App 大部分的文字，排版規則不交代的話全靠模型自由發揮
