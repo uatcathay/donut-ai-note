@@ -90,8 +90,8 @@ test('複製摘要時同時放 HTML 與純文字，貼到編輯器才保留格�
   }
   const navigator = { clipboard: { write: async (items) => { written.push(...items); } } };
   const { el } = loadApp({}, { navigator, ClipboardItem, Blob });
-  el('preview').innerHTML = '<h3>📝 Mins</h3><ul><li>重點</li></ul>';
-  el('preview').innerText = '📝 Mins\n重點\n';
+  el('summary-body').innerHTML = '<h3>✨ Mins</h3><ul><li>重點</li></ul>';
+  el('summary-body').innerText = '✨ Mins\n重點\n';
   el('err').classList.add('hidden');
 
   await el('btn-copy').onclick();
@@ -99,7 +99,7 @@ test('複製摘要時同時放 HTML 與純文字，貼到編輯器才保留格�
   assert.equal(written.length, 1, '應寫入一個 ClipboardItem');
   const blobText = async (type) => (await written[0].data[type]).text();
   assert.match(await blobText('text/html'), /<li>重點<\/li>/);
-  assert.equal(await blobText('text/plain'), '📝 Mins\n重點');
+  assert.equal(await blobText('text/plain'), '✨ Mins\n重點');
   assert.equal(el('err').classList.contains('hidden'), true, '成功時不該出現錯誤');
 });
 
@@ -124,12 +124,22 @@ test('複製的 HTML 在每個標題前空一行，貼到 Slack 才分得開議�
   }
   const navigator = { clipboard: { write: async (items) => { written.push(...items); } } };
   const { el } = loadApp({}, { navigator, ClipboardItem, Blob });
-  el('preview').innerHTML = '<h3>Mins</h3><h4>A</h4><ul><li>a</li></ul>\n    <h4>B</h4><ul><li>b</li></ul>';
-  el('preview').innerText = '';
+  el('summary-body').innerHTML = '<h3>Mins</h3><h4>A</h4><ul><li>a</li></ul>\n    <h4>B</h4><ul><li>b</li></ul>';
+  el('summary-body').innerText = '';
 
   await el('btn-copy').onclick();
 
   const html = await written[0].data['text/html'].text();
   assert.match(html, /<\/ul><p><br><\/p>\s*<h4>B<\/h4>/, '列點與下一個標題之間要有空行');
   assert.match(html, /^<h3>Mins<\/h3><h4>A<\/h4>/, '大標與緊接的議題標題之間不需要空行');
+});
+
+// 這句只是告訴使用者逐字稿在哪，貼到別處就成了雜訊
+test('「完整逐字稿已另存」的提示放在可複製的本文之外', async () => {
+  const { app, el } = loadApp({ '/api/completed/a.webm': SUMMARY });
+
+  await app.openSummary('a.webm');
+
+  const html = el('preview').innerHTML;
+  assert.match(html, /<div id="summary-body">[\s\S]*✨ Mins[\s\S]*<\/div>\s*<small class="pv-note">/);
 });

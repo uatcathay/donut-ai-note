@@ -523,8 +523,9 @@ function renderDone(body) {
   // 逐字稿的去向跟著輸出目的地走：寫死「在 Notion」在沒設定 Notion 時會是錯的
   const where = isFile ? '在 .md 檔' : '在 Notion';
   // 待辦排在前面：打開筆記最先想知道的是「我還要做什麼」，回顧細節是其次
-  $('preview').innerHTML = `${next}
-    <h3 class="pv-section"><strong>📝 Mins</strong></h3>${topics}
+  // 提示放在 #summary-body 外面：它只是告訴使用者逐字稿在哪，複製出去就成了雜訊
+  $('preview').innerHTML = `<div id="summary-body">${next}
+    <h3 class="pv-section"><strong>✨ Mins</strong></h3>${topics}</div>
     <small class="pv-note">（完整逐字稿已另存${where}）</small>`;
   show('done');
 }
@@ -550,7 +551,7 @@ function clearError() {
 let copiedTimer = null;
 $('btn-copy').onclick = async () => {
   try {
-    const preview = $('preview');
+    const preview = $('summary-body');
     // Slack 不吃標題的 margin，貼上後議題標題會緊貼上一段列點，所以在兩者之間補一個空段落
     const html = preview.innerHTML.replace(/<\/ul>(\s*<h[34])/g, '</ul><p><br></p>$1');
     await navigator.clipboard.write([new ClipboardItem({
