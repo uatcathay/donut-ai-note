@@ -16,7 +16,7 @@ export function buildBlocks(result) {
   if (result.nextSteps.length > 0) {
     blocks.push(heading2("◻️ What's next?"), ...result.nextSteps.map(todo));
   }
-  blocks.push(heading2('📝 Mins'));
+  blocks.push(heading2('✨ Mins'));
   for (const topic of result.topics) {
     blocks.push(heading3(topic.title), ...topic.points.map(bullet));
   }

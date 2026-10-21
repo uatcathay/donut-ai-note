@@ -14,7 +14,7 @@ export function buildMarkdown(result, dateStr) {
     for (const step of result.nextSteps) lines.push(`- [ ] ${step}`);
     lines.push('');
   }
-  lines.push('## 📝 Mins', '');
+  lines.push('## ✨ Mins', '');
   for (const topic of result.topics) {
     lines.push(`### ${topic.title}`, '');
     for (const point of topic.points) lines.push(`- ${point}`);

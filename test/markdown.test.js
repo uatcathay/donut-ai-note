@@ -19,7 +19,7 @@ test('buildMarkdown 含各區塊', () => {
   const md = buildMarkdown(result, '2026-07-31');
   assert.match(md, /# 產品週會/);
   assert.match(md, /📅 2026-07-31/);
-  assert.match(md, /## 📝 Mins/);
+  assert.match(md, /## ✨ Mins/);
   assert.match(md, /### 排版問題/);
   assert.match(md, /- 文字被裁切/);
   assert.match(md, /### 後續測試/);
@@ -46,5 +46,5 @@ test('writeMarkdown 實際寫檔', async () => {
 test('buildMarkdown 沒有待辦時整區省略，不留空標題', () => {
   const md = buildMarkdown({ ...result, nextSteps: [] }, '2026-07-31');
   assert.doesNotMatch(md, /What's next/);
-  assert.match(md, /## 📝 Mins/);
+  assert.match(md, /## ✨ Mins/);
 });
