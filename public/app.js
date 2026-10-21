@@ -512,18 +512,19 @@ function renderDone(body) {
     link.removeAttribute('href');
     link.classList.add('is-file');
   }
+  // 標題包 <strong>：複製到不認標題的地方（如 Slack）時，粗體才不會跟著消失
   const topics = body.topics.map((t) => `
-    <h4 class="pv-topic">${esc(t.title)}</h4>
+    <h4 class="pv-topic"><strong>${esc(t.title)}</strong></h4>
     <ul>${t.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>`).join('');
   // 沒有待辦是常態，空標題只會讓人以為漏了東西
   const next = body.nextSteps.length === 0 ? '' : `
-    <h3 class="pv-section">◻️ What's next?</h3>
+    <h3 class="pv-section"><strong>◻️ What's next?</strong></h3>
     <ul class="pv-todo">${body.nextSteps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`;
   // 逐字稿的去向跟著輸出目的地走：寫死「在 Notion」在沒設定 Notion 時會是錯的
   const where = isFile ? '在 .md 檔' : '在 Notion';
   // 待辦排在前面：打開筆記最先想知道的是「我還要做什麼」，回顧細節是其次
   $('preview').innerHTML = `${next}
-    <h3 class="pv-section">📝 Mins</h3>${topics}
+    <h3 class="pv-section"><strong>📝 Mins</strong></h3>${topics}
     <small class="pv-note">（完整逐字稿已另存${where}）</small>`;
   show('done');
 }
@@ -544,12 +545,18 @@ function clearError() {
   $('btn-retry').classList.add('hidden');
 }
 
-// 複製摘要：取 innerText（而非 innerHTML）才會拿到人看得懂的純文字，
-// 且 <li> 之間會保留換行。成功後短暫把圖示換成勾勾當作回饋。
+// 複製摘要：同時放 HTML 與純文字。貼到 Notion、文件等編輯器時取 HTML，標題與列點才保留得住；
+// 貼到純文字的地方則取 innerText，<li> 之間仍會換行。成功後短暫把圖示換成勾勾當作回饋。
 let copiedTimer = null;
 $('btn-copy').onclick = async () => {
   try {
-    await navigator.clipboard.writeText($('preview').innerText.trim());
+    const preview = $('preview');
+    // Slack 不吃標題的 margin，貼上後議題標題會緊貼上一段列點，所以在兩者之間補一個空段落
+    const html = preview.innerHTML.replace(/<\/ul>(\s*<h[34])/g, '</ul><p><br></p>$1');
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([preview.innerText.trim()], { type: 'text/plain' }),
+    })]);
     const btn = $('btn-copy');
     btn.classList.add('copied');
     clearTimeout(copiedTimer);

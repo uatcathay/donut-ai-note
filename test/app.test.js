@@ -30,7 +30,7 @@ function fakeElement() {
   };
 }
 
-function loadApp(routes) {
+function loadApp(routes, globals = {}) {
   const elements = new Map();
   const document = {
     getElementById: (id) => {
@@ -47,6 +47,7 @@ function loadApp(routes) {
   };
   const context = vm.createContext({
     document, fetch, setInterval: () => 0, clearInterval: () => {}, setTimeout, clearTimeout,
+    ...globals,
   });
   vm.runInContext(APP_SOURCE, context);
   return { app: context, el: document.getElementById };
@@ -79,4 +80,56 @@ test('打開摘要時，清掉先前殘留的紅字', async () => {
 
   assert.equal(el('view-done').classList.contains('hidden'), false, '摘要頁要顯示出來');
   assert.equal(el('err').classList.contains('hidden'), true, '摘要頁不該掛著舊的失敗訊息');
+});
+
+// writeText 只放得進純文字，貼到 Notion 或文件裡標題和列點都會變成一行行的普通文字
+test('複製摘要時同時放 HTML 與純文字，貼到編輯器才保留格式', async () => {
+  const written = [];
+  class ClipboardItem {
+    constructor(data) { this.data = data; }
+  }
+  const navigator = { clipboard: { write: async (items) => { written.push(...items); } } };
+  const { el } = loadApp({}, { navigator, ClipboardItem, Blob });
+  el('preview').innerHTML = '<h3>📝 Mins</h3><ul><li>重點</li></ul>';
+  el('preview').innerText = '📝 Mins\n重點\n';
+  el('err').classList.add('hidden');
+
+  await el('btn-copy').onclick();
+
+  assert.equal(written.length, 1, '應寫入一個 ClipboardItem');
+  const blobText = async (type) => (await written[0].data[type]).text();
+  assert.match(await blobText('text/html'), /<li>重點<\/li>/);
+  assert.equal(await blobText('text/plain'), '📝 Mins\n重點');
+  assert.equal(el('err').classList.contains('hidden'), true, '成功時不該出現錯誤');
+});
+
+// 畫面上的粗體來自 <h3>／<h4> 的預設樣式。Slack 這類不認標題的地方貼上後只剩普通字，
+// 包一層 <strong> 才保得住粗體。
+test('摘要的標題包著 <strong>，貼到不認標題的地方仍是粗體', async () => {
+  const { app, el } = loadApp({ '/api/completed/a.webm': { ...SUMMARY, nextSteps: ['寄出會議記錄'] } });
+
+  await app.openSummary('a.webm');
+
+  const html = el('preview').innerHTML;
+  const headings = html.match(/<h[34][^>]*>.*?<\/h[34]>/gs) || [];
+  assert.equal(headings.length, 3, '應有 What\'s next、Mins 與一個議題標題');
+  for (const h of headings) assert.match(h, /<strong>.+<\/strong>/s, `標題缺少 <strong>：${h}`);
+});
+
+// Slack 不吃標題的 margin，貼上後下一個議題標題緊貼著上一段列點
+test('複製的 HTML 在每個標題前空一行，貼到 Slack 才分得開議題', async () => {
+  const written = [];
+  class ClipboardItem {
+    constructor(data) { this.data = data; }
+  }
+  const navigator = { clipboard: { write: async (items) => { written.push(...items); } } };
+  const { el } = loadApp({}, { navigator, ClipboardItem, Blob });
+  el('preview').innerHTML = '<h3>Mins</h3><h4>A</h4><ul><li>a</li></ul>\n    <h4>B</h4><ul><li>b</li></ul>';
+  el('preview').innerText = '';
+
+  await el('btn-copy').onclick();
+
+  const html = await written[0].data['text/html'].text();
+  assert.match(html, /<\/ul><p><br><\/p>\s*<h4>B<\/h4>/, '列點與下一個標題之間要有空行');
+  assert.match(html, /^<h3>Mins<\/h3><h4>A<\/h4>/, '大標與緊接的議題標題之間不需要空行');
 });

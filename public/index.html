@@ -250,6 +250,8 @@
     .pv-section + .pv-topic { margin-top: 0; }
     #preview .pv-section:not(:first-child) { margin-top: 40px; }
     .pv-topic { margin: 16px 0 0; font-size: 16px; font-weight: 600; }
+    /* <strong> 只為了貼到不認標題的編輯器時保住粗體；畫面上沿用標題原本的字重 */
+    .pv-section strong, .pv-topic strong { font-weight: inherit; }
     /* 待辦用方框呈現。App 這邊是回顧用的預覽，要打勾請到 Notion */
     #preview ul.pv-todo { list-style: none; padding-left: 2px; }
     #preview ul.pv-todo li { position: relative; padding-left: 22px; margin-bottom: 4px; }
