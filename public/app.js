@@ -525,7 +525,7 @@ function renderDone(body) {
   // 待辦排在前面：打開筆記最先想知道的是「我還要做什麼」，回顧細節是其次
   // 提示放在 #summary-body 外面：它只是告訴使用者逐字稿在哪，複製出去就成了雜訊
   $('preview').innerHTML = `<div id="summary-body">${next}
-    <h3 class="pv-section"><strong>✨ Mins</strong></h3>${topics}</div>
+    <h3 class="pv-section"><strong>✨ Minutes</strong></h3>${topics}</div>
     <small class="pv-note">（完整逐字稿已另存${where}）</small>`;
   show('done');
 }
