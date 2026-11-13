@@ -47,7 +47,7 @@ function loadApp(routes, globals = {}) {
   const fetch = async (url, init = {}) => {
     const path = String(url).split('?')[0];
     requests.push(`${init.method || 'GET'} ${path}`);
-    const route = routes[path] ?? { items: [] };
+    const route = typeof routes[path] === 'function' ? routes[path]() : routes[path] ?? { items: [] };
     return { ok: true, json: async () => route };
   };
   const context = vm.createContext({
@@ -197,4 +197,27 @@ test('已完成那一列標出這筆用的是免費版還是付費版', async ()
   assert.equal(await meta({ ...done, tier: 'free' }), '已完成・免費版');
   assert.equal(await meta({ ...done, tier: 'paid' }), '已完成・付費版');
   assert.equal(await meta(done), '已完成', '舊資料沒有版本就不標');
+});
+
+// 實際遇到的 bug：重啟常駐伺服器的那幾秒，清單剛好問不到，被當成「清單是空的」，
+// 於是停止輪詢——伺服器恢復後畫面也不會再去問，兩段錄音就一直不見，要按 ⌘R 才回來。
+test('伺服器一時連不上時，清單不清空、也不停止自動更新', async () => {
+  let serverUp = true;
+  let polling = false;
+  const { app, el } = loadApp({
+    '/api/jobs': () => {
+      if (!serverUp) throw new TypeError('Failed to fetch');
+      return { items: [PENDING] };
+    },
+  }, {
+    setInterval: () => { polling = true; return 1; },
+    clearInterval: () => { polling = false; },
+  });
+  await app.refreshJobs();
+  assert.equal(polling, true);
+
+  serverUp = false;
+  await app.refreshJobs();
+  assert.equal(polling, true, '連不上不代表清單空了，要繼續問，伺服器回來才會自己恢復');
+  assert.equal(el('jobs').classList.contains('hidden'), false, '上一次看到的清單要留著');
 });

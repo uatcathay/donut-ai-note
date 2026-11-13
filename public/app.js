@@ -308,10 +308,16 @@ function addAction(parent, text, onclick) {
 
 async function refreshJobs() {
   const box = $('jobs');
-  let items = [];
+  let items;
   try {
     items = (await (await fetch('/api/jobs')).json()).items || [];
-  } catch { /* 清單拿不到不該影響錄音 */ }
+  } catch {
+    // 拿不到不等於清單空了（例如常駐伺服器正在重啟）：畫面維持上一次的樣子，
+    // 並且繼續輪詢——停掉的話伺服器回來了也沒人再問，清單會一直空著直到重新整理。
+    // 清單拿不到也不該影響錄音。
+    scheduleJobsPolling(true);
+    return;
+  }
 
   jobCount = items.length;
   scheduleJobsPolling(items.length > 0);
