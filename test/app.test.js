@@ -9,7 +9,10 @@ const APP_SOURCE = readFileSync(new URL('../public/app.js', import.meta.url), 'u
 
 function fakeElement() {
   const classes = new Set();
+  const children = [];
   return {
+    children,
+    className: '',
     textContent: '',
     innerHTML: '',
     onclick: null,
@@ -23,7 +26,7 @@ function fakeElement() {
         return on;
       },
     },
-    append() {},
+    append(...nodes) { children.push(...nodes); },
     focus() {},
     close() {},
     removeAttribute() {},
@@ -40,8 +43,10 @@ function loadApp(routes, globals = {}) {
     querySelectorAll: () => [],
     createElement: () => fakeElement(),
   };
-  const fetch = async (url) => {
+  const requests = [];
+  const fetch = async (url, init = {}) => {
     const path = String(url).split('?')[0];
+    requests.push(`${init.method || 'GET'} ${path}`);
     const route = routes[path] ?? { items: [] };
     return { ok: true, json: async () => route };
   };
@@ -50,7 +55,7 @@ function loadApp(routes, globals = {}) {
     ...globals,
   });
   vm.runInContext(APP_SOURCE, context);
-  return { app: context, el: document.getElementById };
+  return { app: context, el: document.getElementById, requests };
 }
 
 const SUMMARY = {
@@ -142,4 +147,46 @@ test('「完整逐字稿已另存」的提示放在可複製的本文之外', as
 
   const html = el('preview').innerHTML;
   assert.match(html, /<div id="summary-body">[\s\S]*✨ Minutes[\s\S]*<\/div>\s*<small class="pv-note">/);
+});
+
+// ── 付費版備援 ─────────────────────────────────────────
+const PENDING = { id: 'a.webm', label: '週會（20261113 10:00）', sizeBytes: 60_000_000, state: 'pending' };
+
+async function renderJobs(job) {
+  const loaded = loadApp({ '/api/jobs': { items: [job] } });
+  await loaded.app.refreshJobs();
+  const row = loaded.el('jobs').children.find((c) => c.className === 'pending-item');
+  const [label, actions] = row.children;
+  return { ...loaded, label, actions };
+}
+
+const texts = (node) => node.children.map((c) => c.textContent);
+
+test('免費版放棄的錄音：那一列多一行紅字，「付費分析」排在立即分析與刪除中間', async () => {
+  const { label, actions } = await renderJobs({ ...PENDING, paid: { note: '免費版忙碌，3 次都沒成功', costNtd: 6 } });
+  const red = label.children.find((c) => c.className === 'job-retry');
+  assert.equal(red?.textContent, '免費版忙碌，3 次都沒成功');
+  assert.deepEqual(texts(actions), ['立即分析', '付費分析・約 NT$6', '刪除']);
+});
+
+test('估不出金額時按鈕只寫「付費分析」', async () => {
+  const { actions } = await renderJobs({ ...PENDING, paid: { note: null, costNtd: null } });
+  assert.deepEqual(texts(actions), ['立即分析', '付費分析', '刪除']);
+});
+
+test('紅字已經過時（額度恢復了）就只留按鈕，不顯示紅字', async () => {
+  const { label } = await renderJobs({ ...PENDING, paid: { note: null, costNtd: 6 } });
+  assert.equal(label.children.some((c) => c.className === 'job-retry'), false);
+});
+
+test('沒被免費版放棄過的錄音維持原本兩顆按鈕', async () => {
+  const { actions } = await renderJobs(PENDING);
+  assert.deepEqual(texts(actions), ['立即分析', '刪除']);
+});
+
+test('按「付費分析」送到付費版的端點，不是一般的重試', async () => {
+  const { actions, requests } = await renderJobs({ ...PENDING, paid: { note: null, costNtd: 6 } });
+  await actions.children[1].onclick();
+  assert.ok(requests.includes('POST /api/pending/a.webm/paid-retry'));
+  assert.ok(!requests.includes('POST /api/pending/a.webm/retry'));
 });

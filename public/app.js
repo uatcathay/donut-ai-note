@@ -335,6 +335,7 @@ async function refreshJobs() {
       addLine(label, `${RETRY_TEXT[job.retry.reason] || '暫時性錯誤'}・`
         + `第 ${job.retry.attempt}/${job.retry.total} 次重試`, 'job-retry');
     }
+    if (job.state === 'pending' && job.paid?.note) addLine(label, job.paid.note, 'job-retry');
     row.append(label);
 
     const actions = document.createElement('div');
@@ -348,6 +349,11 @@ async function refreshJobs() {
       addAction(actions, '移除', () => removeJob(job.id));
     } else if (job.state === 'pending' && !startingIds.has(job.id)) {
       addAction(actions, '立即分析', () => analyzeNow(job.id));
+      // 花不花錢由使用者當下決定：不急的錄音繼續按「立即分析」慢慢等免費版就好
+      if (job.paid) {
+        const cost = job.paid.costNtd ? `・約 NT$${job.paid.costNtd}` : '';
+        addAction(actions, `付費分析${cost}`, () => analyzeNow(job.id, 'paid'));
+      }
       addAction(actions, '刪除', () => discardJob(job.id));
     }
     row.append(actions);
@@ -355,13 +361,14 @@ async function refreshJobs() {
   }
 }
 
-async function analyzeNow(id) {
+async function analyzeNow(id, tier = 'free') {
   // 紅字多半是上一次失敗留下的，重試開始後它就過時了——不清掉會一路掛到摘要頁
   clearError();
   startingIds.add(id);
   refreshJobs();
   try {
-    const res = await fetch(`/api/pending/${encodeURIComponent(id)}/retry`, { method: 'POST' });
+    const endpoint = tier === 'paid' ? 'paid-retry' : 'retry';
+    const res = await fetch(`/api/pending/${encodeURIComponent(id)}/${endpoint}`, { method: 'POST' });
     const body = await res.json();
     if (!body.ok) showError(body.message || '無法開始分析');
   } catch (e) {
