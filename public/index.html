@@ -191,13 +191,15 @@
     .pending { margin-top: 80px; width: calc(100vw - 80px); text-align: left; }
     .pending-title { font-size: 14px; color: var(--fg-muted); margin-bottom: 20px; }
     .pending-item {
-      display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+      display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 20px;
       font-size: 14px; color: var(--fg-muted);
       padding: 20px; border-radius: 10px; background: var(--surface);
     }
     .pending-item + .pending-item { margin-top: 12px; }
-    /* 視窗窄時左側文字換行完整呈現；動作永遠不被壓縮，不能讓使用者按不到 */
-    .pending-label { flex: 1; min-width: 0; }
+    /* 視窗窄時左側文字換行完整呈現；動作永遠不被壓縮，不能讓使用者按不到。
+       多了「付費分析」的那列在 mobile 擠不下三顆按鈕，文字會被壓成一字一行——
+       文字至少留 120px，不夠就讓按鈕整排換到下一行。 */
+    .pending-label { flex: 1 1 120px; min-width: 0; }
     .job-meta { margin-top: 4px; }
     /* 重試中用警示色：跟「正常等待」要一眼分得出來（沿用原處理頁的處理方式） */
     .job-retry { margin-top: 4px; color: var(--danger); }
