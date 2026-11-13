@@ -9,7 +9,7 @@ export function getAnalyzer(name) {
   return fn;
 }
 
-export function analyze(audioBuffer, mimeType) {
+export function analyze(audioBuffer, mimeType, opts = {}) {
   const name = process.env.ENGINE || 'gemini';
-  return getAnalyzer(name)(audioBuffer, mimeType);
+  return getAnalyzer(name)(audioBuffer, mimeType, opts);
 }

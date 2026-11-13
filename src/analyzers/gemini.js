@@ -327,7 +327,10 @@ async function callGemini(prompt, audioBuffer, mimeType, { tier }) {
     // 付費版的 429 是另一個專案的額度，不能拿來推論免費版還剩多少
     if (tier !== 'paid' && fallback === 'quota') noteQuotaExhausted(nextQuotaResetAt());
     const described = describeFailure(err, '分析');
-    if (tier !== 'paid') described.fallback = fallback;
+    if (tier !== 'paid') {
+      described.fallback = fallback;
+      if (fallback === 'quota') described.resetAt = nextQuotaResetAt().toISOString();
+    }
     throw described;
   } finally {
     // 不論成功或失敗都刪：失敗後的重試本來就會重新上傳一份。

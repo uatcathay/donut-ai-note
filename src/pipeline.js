@@ -10,6 +10,7 @@ import {
 } from './recordings.js';
 import { setAnalysisTarget, startAnalysis, setStage, endAnalysis } from './progress.js';
 import { noteCompleted } from './completed.js';
+import { noteOffer as defaultNoteOffer, clearOffer as defaultClearOffer } from './paid-offers.js';
 
 export function decideTitle(userTitle, suggestedTitle, dateStr) {
   const u = (userTitle || '').trim();
@@ -46,6 +47,9 @@ export async function processMeeting(input, deps = {}) {
   const stage = deps.setStage || setStage;
   const finish = deps.endAnalysis || endAnalysis;
   const now = deps.now || (() => new Date());
+  const offer = deps.noteOffer || defaultNoteOffer;
+  const unoffer = deps.clearOffer || defaultClearOffer;
+  const tier = input.tier || 'free';
 
   const stamp = formatStamp(now());
 
@@ -71,7 +75,7 @@ export async function processMeeting(input, deps = {}) {
   let result;
   let destination;
   try {
-    analysis = await analyzeFn(input.audioBuffer, input.mimeType);
+    analysis = await analyzeFn(input.audioBuffer, input.mimeType, { tier });
     validateAnalysis(analysis);
 
     const title = decideTitle(input.userTitle, analysis.suggestedTitle, stamp.date);
@@ -87,6 +91,15 @@ export async function processMeeting(input, deps = {}) {
     // 保留錄音，並讓使用者知道它還在——否則畫面關掉就等於永久遺失
     err.message = `${err.message}（錄音已保留：${recordingName}，可稍後重試）`;
     err.recordingPath = recordingPath;
+    // 付費版失敗也留著按鈕：錢花不花仍由使用者決定。付費也救不了的錯誤（例如格式不對）
+    // 不新增按鈕，但之前給過的也不收回——那段錄音還是沒分析成功。
+    if (tier === 'paid') {
+      await offer(recordingName, { reason: 'paid' });
+    } else if (err.fallback) {
+      await offer(recordingName, err.resetAt
+        ? { reason: err.fallback, resetAt: err.resetAt }
+        : { reason: err.fallback });
+    }
     finish();
     throw err;
   }
@@ -96,6 +109,7 @@ export async function processMeeting(input, deps = {}) {
   // 前端只在清單非空時輪詢，輪詢剛好落在那一刻就會停掉，已完成那列便不會自己出現。
   const done = { ...result, destination };
   noteDone(recordingName, done);
+  await unoffer(recordingName);
   // 結果已經寫進 Notion 或 .md，原始音檔沒有留存的必要
   await discard(recordingPath);
   finish();

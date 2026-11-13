@@ -17,6 +17,8 @@ const baseDeps = (overrides = {}) => ({
   // 注入假的存檔／刪檔，測試不該碰真實磁碟
   saveRecording: async () => '/tmp/錄音.webm',
   discardRecording: async () => {},
+  noteOffer: async () => {},
+  clearOffer: async () => {},
   ...overrides,
 });
 
@@ -190,4 +192,82 @@ test('分析失敗時進度一樣要結束，否則之後所有分析都會被�
     { audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '' },
     baseDeps({ analyze: async () => { throw new AppError('analyze', '壞了'); } })));
   assert.equal(getProgress().active, false);
+});
+
+// ── 付費版備援 ─────────────────────────────────────────
+const REC = '/tmp/rec/錄音_2026-11-13_1000_週會.webm';
+const retryInput = (extra = {}) => ({
+  audioBuffer: Buffer.from('x'), mimeType: 'audio/webm', userTitle: '週會', recordingPath: REC, ...extra,
+});
+const offerSpy = () => {
+  const calls = [];
+  return {
+    calls,
+    deps: {
+      noteOffer: async (id, offer) => { calls.push(['note', id, offer]); },
+      clearOffer: async (id) => { calls.push(['clear', id]); },
+    },
+  };
+};
+
+test('免費版試滿 3 次仍忙碌時，記下那段錄音可以改用付費版', async () => {
+  const spy = offerSpy();
+  const deps = baseDeps({
+    ...spy.deps,
+    analyze: async () => { throw Object.assign(new AppError('analyze', '忙碌'), { fallback: 'busy' }); },
+  });
+  await assert.rejects(() => processMeeting(retryInput(), deps));
+  assert.deepEqual(spy.calls, [['note', '錄音_2026-11-13_1000_週會.webm', { reason: 'busy' }]]);
+});
+
+test('每日額度用完時連同恢復時間一起記下，過了時間紅字才能自己消失', async () => {
+  const spy = offerSpy();
+  const deps = baseDeps({
+    ...spy.deps,
+    analyze: async () => {
+      throw Object.assign(new AppError('analyze', '額度'), { fallback: 'quota', resetAt: '2026-11-14T08:00:00.000Z' });
+    },
+  });
+  await assert.rejects(() => processMeeting(retryInput(), deps));
+  assert.deepEqual(spy.calls[0][2], { reason: 'quota', resetAt: '2026-11-14T08:00:00.000Z' });
+});
+
+test('付費也救不了的錯誤不提供付費版，但也不收回之前給過的按鈕', async () => {
+  const spy = offerSpy();
+  const deps = baseDeps({
+    ...spy.deps,
+    analyze: async () => { throw new AppError('analyze', 'Gemini 回傳非 JSON'); },
+  });
+  await assert.rejects(() => processMeeting(retryInput(), deps));
+  assert.deepEqual(spy.calls, []);
+});
+
+test('付費版失敗時按鈕留著，紅字改說付費版也沒成功', async () => {
+  const spy = offerSpy();
+  const deps = baseDeps({
+    ...spy.deps,
+    analyze: async () => { throw new AppError('analyze', '付費版逾時'); },
+  });
+  await assert.rejects(() => processMeeting(retryInput({ tier: 'paid' }), deps));
+  assert.deepEqual(spy.calls, [['note', '錄音_2026-11-13_1000_週會.webm', { reason: 'paid' }]]);
+});
+
+test('分析成功就收回付費按鈕', async () => {
+  const spy = offerSpy();
+  await processMeeting(retryInput(), baseDeps(spy.deps));
+  assert.deepEqual(spy.calls, [['clear', '錄音_2026-11-13_1000_週會.webm']]);
+});
+
+test('要用的版本會傳給分析器，沒指定就是免費版', async () => {
+  const tiers = [];
+  const deps = baseDeps({
+    ...offerSpy().deps,
+    analyze: async (_a, _m, opts) => {
+      tiers.push(opts.tier);
+      return { suggestedTitle: 'A', topics: [{ title: 'T', points: ['k'] }], nextSteps: [], transcript: 't' };
+    },
+  });
+  await processMeeting(retryInput({ tier: 'paid' }), deps);
+  await processMeeting(retryInput(), deps);
+  assert.deepEqual(tiers, ['paid', 'free']);
 });
