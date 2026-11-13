@@ -101,49 +101,47 @@ export function withTimeout(promise, ms, label) {
 
 // 免費版尖峰時段會回 503 UNAVAILABLE，是 Google 那端的容量問題、過幾分鐘就好。
 // 這種錯誤自己重試遠比叫使用者一直按重試合理——而且檔案已經上傳完，重試只要重打生成。
+const NETWORK_FAILURE = /fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i;
+
 export function isRetryable(err) {
   if (err instanceof AppError) return false;   // 自家的逾時／驗證錯誤重試也沒用
   const raw = String(err?.message || err);
   if (/RESOURCE_EXHAUSTED|"code"\s*:\s*429/.test(raw)) return false;   // 配額用盡不會在幾秒內恢復
+  if (NETWORK_FAILURE.test(raw)) return true;   // 含 undici 300 秒 headersTimeout 造成的斷線
   return /UNAVAILABLE|INTERNAL|high demand|overloaded|"code"\s*:\s*(500|502|503|504)/i.test(raw);
 }
 
-const RETRY_DELAYS_MS = [5_000, 15_000, 45_000];
+const RETRY_DELAYS_MS = [5_000, 15_000];
 
-// 逾時另計，而且只給一次。Gemini 忙碌時不一定回 503，也可能掛住不回應——
-// 實測同一個檔案當下逾時（>132s），隔幾分鐘重跑只要 15.8s，所以重試是值得的。
-// 但每次嘗試都要吃掉一份完整逾時額度，給太多次會讓長錄音等到天荒地老。
-const TIMEOUT_RETRIES = 1;
+// 免費版失敗到第 3 次就停手，把「要不要改用付費版」交給使用者決定。
+// 逾時、503、連線中斷都算在同一個上限裡：使用者在意的是總共等了幾輪，不是失敗的種類。
+// 逾時不退避——每次逾時本身已經等了好幾分鐘。
+const MAX_ATTEMPTS = 3;
 
 export async function withRetry(attempt, opts = {}) {
+  const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
   const delays = opts.delays || RETRY_DELAYS_MS;
-  const timeoutRetries = opts.timeoutRetries ?? TIMEOUT_RETRIES;
   const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const log = opts.log || writeLog;
   const label = opts.label || '';
   // 重試必須讓前端看得見，否則使用者只看到轉圈，分不出「還在努力」與「已經死了」
   const onRetry = opts.onRetry || (() => {});
-  let transientUsed = 0;
-  let timeoutUsed = 0;
-  for (;;) {
+  const retries = maxAttempts - 1;
+  for (let used = 0; ; used += 1) {
     try {
       return await attempt();
     } catch (err) {
-      if (err?.timedOut && timeoutUsed < timeoutRetries) {
-        timeoutUsed += 1;
-        log(`[重試] ${label}逾時，立即重試（第 ${timeoutUsed}/${timeoutRetries} 次；逾時本身已等很久，不再退避）`);
-        onRetry('timeout', timeoutUsed, timeoutRetries);
+      if (used >= retries || !(err?.timedOut || isRetryable(err))) throw err;
+      const n = used + 1;
+      if (err.timedOut) {
+        log(`[重試] ${label}逾時，立即重試（第 ${n}/${retries} 次；逾時本身已等很久，不再退避）`);
+        onRetry('timeout', n, retries);
         continue;
       }
-      if (isRetryable(err) && transientUsed < delays.length) {
-        const wait = delays[transientUsed];
-        transientUsed += 1;
-        log(`[重試] ${label}遇到暫時性錯誤，${wait / 1000} 秒後重試（第 ${transientUsed}/${delays.length} 次）`);
-        onRetry('busy', transientUsed, delays.length);
-        await sleep(wait);
-        continue;
-      }
-      throw err;
+      const wait = delays[Math.min(used, delays.length - 1)];
+      log(`[重試] ${label}遇到暫時性錯誤，${wait / 1000} 秒後重試（第 ${n}/${retries} 次）`);
+      onRetry('busy', n, retries);
+      await sleep(wait);
     }
   }
 }
@@ -209,7 +207,7 @@ export function classifyQuotaError(raw) {
 export function describeFailure(err, label, opts = {}) {
   if (err instanceof AppError) return err;
   const raw = String(err?.message || err);
-  if (/fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(raw)) {
+  if (NETWORK_FAILURE.test(raw)) {
     return new AppError('analyze', `${label}時連線 Gemini 失敗，請確認網路後用同一段錄音重試。`);
   }
   const quota = classifyQuotaError(raw);

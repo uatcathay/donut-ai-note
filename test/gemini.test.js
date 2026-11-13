@@ -122,7 +122,7 @@ test('withTimeout 逾時錯誤帶 timedOut 記號，讓重試邏輯認得出來'
 
 // Gemini 忙碌時有兩種表現：直接回 503，或掛住不回應直到我們把它砍掉。
 // 實測後者：同一個檔案當下逾時（>132s），隔幾分鐘重跑只要 15.8s。
-test('withRetry：逾時會自動重試一次，且不浪費時間退避', async () => {
+test('withRetry：逾時會自動重試，且不浪費時間退避', async () => {
   let calls = 0;
   const slept = [];
   const timeout = () => Object.assign(new AppError('analyze', '逾時'), { timedOut: true });
@@ -136,13 +136,40 @@ test('withRetry：逾時會自動重試一次，且不浪費時間退避', async
   assert.deepEqual(slept, [], '逾時本身已經等很久了，不該再退避');
 });
 
-test('withRetry：逾時只重試一次，第二次逾時就放棄', async () => {
+// 免費版失敗 3 次後就交給使用者決定要不要付費，所以「3 次」必須是硬上限，
+// 不論失敗的是 503、逾時還是連線中斷，都算在同一個額度裡。
+test('withRetry：預設最多試 3 次，三次都逾時就放棄', async () => {
   let calls = 0;
   const timeout = () => Object.assign(new AppError('analyze', '逾時'), { timedOut: true });
   await assert.rejects(
     () => withRetry(async () => { calls += 1; throw timeout(); }, { sleep: async () => {}, log: () => {} }),
     (e) => e.timedOut === true);
-  assert.equal(calls, 2, '首次加一次重試就該停手，否則兩小時的錄音會等到天荒地老');
+  assert.equal(calls, 3);
+});
+
+test('withRetry：逾時與 503 共用同一個次數上限', async () => {
+  let calls = 0;
+  const timeout = () => Object.assign(new AppError('analyze', '逾時'), { timedOut: true });
+  await assert.rejects(
+    () => withRetry(async () => {
+      calls += 1;
+      throw calls === 2 ? timeout() : err503();
+    }, { sleep: async () => {}, log: () => {} }),
+    /503/);
+  assert.equal(calls, 3);
+});
+
+// undici 的連線中斷（含 300 秒 headersTimeout）以前完全不重試，失敗一次就叫使用者自己重按
+test('withRetry：fetch failed 也算暫時性失敗，會退避後重試', async () => {
+  let calls = 0;
+  const slept = [];
+  const out = await withRetry(async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError('fetch failed');
+    return 'ok';
+  }, { delays: [10, 20], sleep: async (ms) => { slept.push(ms); }, log: () => {} });
+  assert.equal(out, 'ok');
+  assert.deepEqual(slept, [10]);
 });
 
 test('withRetry：暫時性錯誤會重試，成功就回傳結果', async () => {
@@ -152,7 +179,7 @@ test('withRetry：暫時性錯誤會重試，成功就回傳結果', async () =>
     calls += 1;
     if (calls < 3) throw err503();
     return 'ok';
-  }, { delays: [10, 20, 30], sleep: async (ms) => { slept.push(ms); }, log: () => {} });
+  }, { delays: [10, 20], sleep: async (ms) => { slept.push(ms); }, log: () => {} });
   assert.equal(out, 'ok');
   assert.equal(calls, 3);
   assert.deepEqual(slept, [10, 20]);
@@ -165,6 +192,23 @@ test('withRetry：重試用完仍失敗就把錯誤丟出來', async () => {
       { delays: [10, 20], sleep: async () => {}, log: () => {} }),
     /503/);
   assert.equal(calls, 3, '應為首次加兩次重試');
+});
+
+test('withRetry：maxAttempts 可以調低（付費版只多試一次）', async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => withRetry(async () => { calls += 1; throw err503(); },
+      { maxAttempts: 2, sleep: async () => {}, log: () => {} }),
+    /503/);
+  assert.equal(calls, 2);
+});
+
+test('withRetry：onRetry 回報的是「第幾次重試／共幾次重試」', async () => {
+  const seen = [];
+  await assert.rejects(() => withRetry(async () => { throw err503(); }, {
+    sleep: async () => {}, log: () => {}, onRetry: (...args) => seen.push(args),
+  }));
+  assert.deepEqual(seen, [['busy', 1, 2], ['busy', 2, 2]]);
 });
 
 test('withRetry：不可重試的錯誤立刻丟出，不浪費時間等待', async () => {
