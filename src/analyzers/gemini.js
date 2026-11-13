@@ -169,6 +169,27 @@ export function describeQuotaReset(now = new Date(), timeZone = undefined) {
   return `${day(at) === day(now) ? '今天' : '明天'} ${clock}`;
 }
 
+// 免費版放棄時，告訴上層「值不值得提供付費版」：
+// - busy：生成已經照規則試滿 3 次（逾時、503、斷線都算）。上傳只試一次，不算數，
+//   否則紅字寫「3 次都沒成功」就是在說謊。
+// - quota：每日額度用完，今天剩下的時間免費版都不會成功，不必等滿 3 次。
+// 每分鐘上限等一分鐘就好；其他錯誤（格式不對、檔案壞掉）付費也救不了。
+export function fallbackReason(err, { generating }) {
+  const raw = String(err?.message || err);
+  const quota = classifyQuotaError(raw);
+  if (quota) return quota === 'daily' ? 'quota' : null;
+  if (!generating) return null;
+  return err?.timedOut || isRetryable(err) ? 'busy' : null;
+}
+
+// 付費版是另一個綁了帳單的專案，用另一把 key。沒填就等於沒有付費版。
+export function apiKeyFor(tier, env = process.env) {
+  return tier === 'paid' ? env.GEMINI_PAID_API_KEY : env.GEMINI_API_KEY;
+}
+
+// 免費版試 3 次是在替使用者省錢；付費版已經決定花錢了，失敗多半是真的有問題，只再試 1 次。
+const PAID_MAX_ATTEMPTS = 2;
+
 // 錯誤原文要寫進 log 才有證據可查，但原文可能夾帶金鑰，不能原封不動落地。
 export function redactSecrets(text) {
   return String(text).replace(/AIza[0-9A-Za-z_-]{10,}/g, 'AIza***');
@@ -237,9 +258,9 @@ export function formatTimings({ uploadMs, waitMs, generateMs, bytes }) {
     + `｜生成 ${sec(generateMs)} (${pct(generateMs)})｜合計 ${sec(total)}（音檔 ${mb}MB）`;
 }
 
-async function callGemini(prompt, audioBuffer, mimeType) {
+async function callGemini(prompt, audioBuffer, mimeType, { tier }) {
   const { GoogleGenAI, createUserContent, createPartFromUri } = await import('@google/genai');
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: apiKeyFor(tier) });
   const blob = new Blob([audioBuffer], { type: mimeType });
 
   const timeoutMs = stepTimeoutMs(audioBuffer.length);
@@ -259,7 +280,9 @@ async function callGemini(prompt, audioBuffer, mimeType) {
   );
 
   let uploadedName = null;   // 記在 try 外面，finally 才刪得到
-  try {    let file = await withTimeout(
+  let generating = false;
+  try {
+    let file = await withTimeout(
       ai.files.upload({ file: blob, config: { mimeType } }), timeoutMs, '上傳音檔');
     uploadedName = file.name;
     tUploaded = Date.now();
@@ -277,25 +300,35 @@ async function callGemini(prompt, audioBuffer, mimeType) {
     setStage('analyze');
 
     if (file.state === 'FAILED') throw new AppError('analyze', '音檔上傳處理失敗');
+    generating = true;
     // 只重試生成，不重傳檔案——檔案已在 Gemini 端（114.6MB 上傳實測要 57 秒）。
     // 每次嘗試各自吃一份完整逾時額度，退避時間不佔用它。
     const res = await withRetry(() => withTimeout(ai.models.generateContent({
       model: MODEL,
       contents: createUserContent([createPartFromUri(file.uri, file.mimeType), prompt]),
       config: { thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
-    }), timeoutMs, '分析錄音'), { label: '分析錄音', onRetry: noteRetry });
+    }), timeoutMs, '分析錄音'), {
+      label: '分析錄音',
+      onRetry: noteRetry,
+      maxAttempts: tier === 'paid' ? PAID_MAX_ATTEMPTS : undefined,
+    });
 
-    report('');
-    clearQuota();   // 成功是額度可用的直接證據，比我們的推算可信
+    report(tier === 'paid' ? '　（付費版）' : '　（免費版）');
+    // 成功是額度可用的直接證據，比我們的推算可信——但付費版成功證明不了免費版的額度
+    if (tier !== 'paid') clearQuota();
     return res.text;
   } catch (err) {
-    report('　← 失敗');   // 失敗時同樣印出計時，才知道卡在哪一段
+    report(`　← 失敗（${tier === 'paid' ? '付費版' : '免費版'}）`);   // 失敗時同樣印出計時，才知道卡在哪一段
     // 原文只在這一刻存在，describeFailure 之後就只剩人話。
     // 2026-08-18 撞到額度上限時就是因此沒留下 quotaId，事後查不出是哪一種額度。
     if (!(err instanceof AppError)) writeLog(`[錯誤] ${redactSecrets(err?.message || err)}`);
     // 記下來，讓下次開始錄音時就能先提醒，而不是等分析完才知道白等
-    if (classifyQuotaError(err?.message || err) === 'daily') noteQuotaExhausted(nextQuotaResetAt());
-    throw describeFailure(err, '分析');
+    const fallback = fallbackReason(err, { generating });
+    // 付費版的 429 是另一個專案的額度，不能拿來推論免費版還剩多少
+    if (tier !== 'paid' && fallback === 'quota') noteQuotaExhausted(nextQuotaResetAt());
+    const described = describeFailure(err, '分析');
+    if (tier !== 'paid') described.fallback = fallback;
+    throw described;
   } finally {
     // 不論成功或失敗都刪：失敗後的重試本來就會重新上傳一份。
     await discardUploaded(ai, uploadedName);
@@ -304,6 +337,6 @@ async function callGemini(prompt, audioBuffer, mimeType) {
 
 export async function analyze(audioBuffer, mimeType, deps = {}) {
   const generate = deps.generate || callGemini;
-  const raw = await generate(buildPrompt(), audioBuffer, mimeType);
+  const raw = await generate(buildPrompt(), audioBuffer, mimeType, { tier: deps.tier || 'free' });
   return parseGeminiJson(raw);
 }

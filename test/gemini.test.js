@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, discardUploaded, nextQuotaResetAt, describeQuotaReset, redactSecrets } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, discardUploaded, nextQuotaResetAt, describeQuotaReset, redactSecrets, fallbackReason, apiKeyFor } from '../src/analyzers/gemini.js';
 
 const MB = 1024 * 1024;
 
@@ -380,4 +380,49 @@ test('withTimeout 逾時拋出帶階段與秒數的錯誤，而不是無限等�
     () => withTimeout(never, 50, '分析'),
     (e) => e.stage === 'analyze' && /分析/.test(e.message) && /沒有回應/.test(e.message),
   );
+});
+
+// ── 付費版備援 ─────────────────────────────────────────
+const busy503 = () => new Error('{"error":{"code":503,"status":"UNAVAILABLE"}}');
+const daily429 = () => new Error('{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}');
+
+test('fallbackReason：生成階段重試用完仍忙碌，就讓使用者改用付費版', () => {
+  assert.equal(fallbackReason(busy503(), { generating: true }), 'busy');
+  assert.equal(fallbackReason(new Error('fetch failed'), { generating: true }), 'busy');
+  const timedOut = new AppError('analyze', '分析錄音超過 300 秒沒有回應');
+  timedOut.timedOut = true;
+  assert.equal(fallbackReason(timedOut, { generating: true }), 'busy');
+});
+
+test('fallbackReason：上傳只試過一次就失敗，不算「3 次都沒成功」', () => {
+  assert.equal(fallbackReason(busy503(), { generating: false }), null);
+});
+
+test('fallbackReason：每日額度用完不必等滿 3 次，直接提供付費版', () => {
+  assert.equal(fallbackReason(daily429(), { generating: false }), 'quota');
+});
+
+test('fallbackReason：每分鐘上限等一分鐘就好、格式錯誤付費也救不了，都不提供付費版', () => {
+  const perMinute = new Error('{"code":429,"status":"RESOURCE_EXHAUSTED","quotaId":"GenerateRequestsPerMinute"}');
+  assert.equal(fallbackReason(perMinute, { generating: true }), null);
+  assert.equal(fallbackReason(new AppError('analyze', 'Gemini 回傳非 JSON'), { generating: true }), null);
+});
+
+test('apiKeyFor：付費版用另一把 key，沒設定時回 undefined', () => {
+  const env = { GEMINI_API_KEY: 'free', GEMINI_PAID_API_KEY: 'paid' };
+  assert.equal(apiKeyFor('free', env), 'free');
+  assert.equal(apiKeyFor('paid', env), 'paid');
+  assert.equal(apiKeyFor('paid', { GEMINI_API_KEY: 'free' }), undefined);
+});
+
+test('analyze 把要用的版本傳給 generate', async () => {
+  let seen;
+  const fakeGenerate = async (_p, _a, _m, opts) => {
+    seen = opts.tier;
+    return '{"topics":[{"title":"T","points":["p"]}],"nextSteps":[],"transcript":"t"}';
+  };
+  await analyze(Buffer.from('x'), 'audio/webm', { generate: fakeGenerate, tier: 'paid' });
+  assert.equal(seen, 'paid');
+  await analyze(Buffer.from('x'), 'audio/webm', { generate: fakeGenerate });
+  assert.equal(seen, 'free', '沒指定就是免費版，維持原本行為');
 });
