@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from '../src/errors.js';
-import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, discardUploaded, nextQuotaResetAt, describeQuotaReset, redactSecrets, fallbackReason, apiKeyFor } from '../src/analyzers/gemini.js';
+import { buildPrompt, parseGeminiJson, analyze, formatTimings, describeFailure, withTimeout, stepTimeoutMs, isRetryable, withRetry, classifyQuotaError, discardUploaded, nextQuotaResetAt, describeQuotaReset, redactSecrets, fallbackReason, apiKeyFor, estimatePaidCostNtd } from '../src/analyzers/gemini.js';
 
 const MB = 1024 * 1024;
 
@@ -425,4 +425,21 @@ test('analyze 把要用的版本傳給 generate', async () => {
   assert.equal(seen, 'paid');
   await analyze(Buffer.from('x'), 'audio/webm', { generate: fakeGenerate });
   assert.equal(seen, 'free', '沒指定就是免費版，維持原本行為');
+});
+
+test('estimatePaidCostNtd：一小時的錄音（約 57MB）以 Standard 現價約 NT$6', () => {
+  assert.equal(estimatePaidCostNtd(57.3 * MB, new Date('2026-11-13T10:00:00+08:00')), 6);
+});
+
+test('estimatePaidCostNtd：2027 年起 Standard 漲成兩倍', () => {
+  assert.equal(estimatePaidCostNtd(57.3 * MB, new Date('2027-01-02T10:00:00+08:00')), 12);
+});
+
+test('estimatePaidCostNtd：很短的錄音至少顯示 NT$1，不顯示 NT$0', () => {
+  assert.equal(estimatePaidCostNtd(0.2 * MB, new Date('2026-11-13T10:00:00+08:00')), 1);
+});
+
+test('estimatePaidCostNtd：估不出大小時回 null，按鈕就不寫金額', () => {
+  assert.equal(estimatePaidCostNtd(undefined), null);
+  assert.equal(estimatePaidCostNtd(0), null);
 });

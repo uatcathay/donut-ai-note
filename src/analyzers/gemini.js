@@ -190,6 +190,25 @@ export function apiKeyFor(tier, env = process.env) {
 // 免費版試 3 次是在替使用者省錢；付費版已經決定花錢了，失敗多半是真的有問題，只再試 1 次。
 const PAID_MAX_ATTEMPTS = 2;
 
+// 付費按鈕上的金額，讓使用者當下判斷值不值得。依官方定價頁（2026-11 查證）的 Standard 方案，
+// 每 100 萬 token：輸入 $0.75、輸出 $3.75，2027/1/1 起兩者都變兩倍。
+// 錄音長度只能從檔案大小推：瀏覽器錄的 webm 實測兩小時 114.6MB，約每小時 57.3MB。
+// 音訊每秒 32 token；輸出（逐字稿＋摘要）每小時約 2.5 萬 token 是估計值，還沒實測過。
+const MB_PER_HOUR = 57.3;
+const INPUT_TOKENS_PER_HOUR = 32 * 3600;
+const OUTPUT_TOKENS_PER_HOUR = 25_000;
+const NTD_PER_USD = 32;
+const PRICE_DOUBLES_AT = new Date('2027-01-01T00:00:00-08:00');
+
+export function estimatePaidCostNtd(bytes, now = new Date()) {
+  if (!bytes) return null;
+  const hours = bytes / 1024 / 1024 / MB_PER_HOUR;
+  const factor = now >= PRICE_DOUBLES_AT ? 2 : 1;
+  const usd = hours * factor
+    * (INPUT_TOKENS_PER_HOUR * 0.75 + OUTPUT_TOKENS_PER_HOUR * 3.75) / 1_000_000;
+  return Math.max(1, Math.round(usd * NTD_PER_USD));
+}
+
 // 錯誤原文要寫進 log 才有證據可查，但原文可能夾帶金鑰，不能原封不動落地。
 export function redactSecrets(text) {
   return String(text).replace(/AIza[0-9A-Za-z_-]{10,}/g, 'AIza***');

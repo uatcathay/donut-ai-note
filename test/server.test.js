@@ -344,3 +344,115 @@ test('GET /api/jobs：已完成的那筆不會同時以待分析再列一次', a
   assert.equal(items.length, 1);
   assert.equal(items[0].state, 'done');
 });
+
+// ── 付費版備援 ─────────────────────────────────────────
+async function jobsWith(t, deps) {
+  clearCompleted();
+  const app = createApp({
+    processMeeting: async () => ({}),
+    listRecordings: async () => [{ id: 'a.webm', label: '甲', sizeBytes: 57.3 * 1024 * 1024 }],
+    getProgress: () => ({ active: false }),
+    hasPaidKey: () => true,
+    now: () => new Date('2026-11-13T10:00:00+08:00'),
+    ...deps,
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const { items } = await (await fetch(`http://localhost:${server.address().port}/api/jobs`)).json();
+  return items[0];
+}
+
+test('GET /api/jobs：免費版放棄的錄音附上付費按鈕的紅字與估價', async (t) => {
+  const job = await jobsWith(t, { readOffers: async () => ({ 'a.webm': { reason: 'busy' } }) });
+  assert.deepEqual(job.paid, { note: '免費版忙碌，3 次都沒成功', costNtd: 6 });
+});
+
+test('GET /api/jobs：額度用完的紅字寫出恢復時間', async (t) => {
+  const job = await jobsWith(t, {
+    readOffers: async () => ({ 'a.webm': { reason: 'quota', resetAt: '2026-11-13T08:00:00.000Z' } }),
+  });
+  assert.match(job.paid.note, /^免費版今日額度已用完，今天 16:00 後恢復$/);
+});
+
+test('GET /api/jobs：過了恢復時間額度那行紅字消失，付費按鈕留著', async (t) => {
+  const job = await jobsWith(t, {
+    readOffers: async () => ({ 'a.webm': { reason: 'quota', resetAt: '2026-11-13T08:00:00.000Z' } }),
+    now: () => new Date('2026-11-13T17:00:00+08:00'),
+  });
+  assert.equal(job.paid.note, null);
+  assert.equal(job.paid.costNtd, 6);
+});
+
+test('GET /api/jobs：付費版失敗時紅字說明付費版也沒成功', async (t) => {
+  const job = await jobsWith(t, { readOffers: async () => ({ 'a.webm': { reason: 'paid' } }) });
+  assert.equal(job.paid.note, '付費版也沒成功，可以再試一次');
+});
+
+test('GET /api/jobs：.env 沒有付費 key 時完全不出現付費按鈕', async (t) => {
+  const job = await jobsWith(t, {
+    readOffers: async () => ({ 'a.webm': { reason: 'busy' } }),
+    hasPaidKey: () => false,
+  });
+  assert.equal(job.paid, undefined);
+});
+
+test('GET /api/jobs：沒被免費版放棄過的錄音沒有付費按鈕', async (t) => {
+  const job = await jobsWith(t, { readOffers: async () => ({}) });
+  assert.equal(job.paid, undefined);
+});
+
+async function paidServer(t, deps = {}) {
+  const runs = [];
+  const app = createApp({
+    processMeeting: async (input) => { runs.push(input); return {}; },
+    resolveRecordingPath: () => new URL('../package.json', import.meta.url).pathname,
+    getProgress: () => ({ active: false }),
+    hasPaidKey: () => true,
+    ...deps,
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  return { port: server.address().port, runs };
+}
+
+test('POST /api/pending/:id/paid-retry 用付費版重新分析那段錄音', async (t) => {
+  const { port, runs } = await paidServer(t);
+  const res = await fetch(`http://localhost:${port}/api/pending/a.webm/paid-retry`, { method: 'POST' });
+  assert.equal(res.status, 200);
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].tier, 'paid');
+});
+
+test('一般的「立即分析」仍然用免費版', async (t) => {
+  const { port, runs } = await paidServer(t);
+  await fetch(`http://localhost:${port}/api/pending/a.webm/retry`, { method: 'POST' });
+  assert.equal(runs[0].tier, 'free');
+});
+
+test('POST paid-retry：沒有付費 key 時拒絕，不會偷偷用免費版跑', async (t) => {
+  const { port, runs } = await paidServer(t, { hasPaidKey: () => false });
+  const res = await fetch(`http://localhost:${port}/api/pending/a.webm/paid-retry`, { method: 'POST' });
+  assert.equal(res.status, 400);
+  assert.equal(runs.length, 0);
+});
+
+test('POST paid-retry：分析進行中時同樣擋下', async (t) => {
+  const { port, runs } = await paidServer(t, { getProgress: () => ({ active: true }) });
+  const res = await fetch(`http://localhost:${port}/api/pending/a.webm/paid-retry`, { method: 'POST' });
+  assert.equal(res.status, 409);
+  assert.equal(runs.length, 0);
+});
+
+test('DELETE /api/pending/:id 連同付費按鈕的紀錄一起清掉', async (t) => {
+  const cleared = [];
+  const app = createApp({
+    processMeeting: async () => ({}),
+    resolveRecordingPath: () => '/tmp/不存在.webm',
+    discardRecording: async () => {},
+    clearOffer: async (id) => { cleared.push(id); },
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  await fetch(`http://localhost:${server.address().port}/api/pending/a.webm`, { method: 'DELETE' });
+  assert.deepEqual(cleared, ['a.webm']);
+});

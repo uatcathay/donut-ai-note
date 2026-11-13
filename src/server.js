@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { processMeeting } from './pipeline.js';
 import { getProgress } from './progress.js';
 import { isQuotaExhausted } from './quota.js';
-import { describeQuotaReset } from './analyzers/gemini.js';
+import { describeQuotaReset, estimatePaidCostNtd } from './analyzers/gemini.js';
 import { log, warn } from './log.js';
 import {
   listRecordings, discardRecording, resolveRecordingPath, parseRecordingName,
@@ -15,6 +15,7 @@ import {
 } from './recordings.js';
 import { formatStamp } from './clock.js';
 import { listCompleted, takeCompleted, removeCompleted } from './completed.js';
+import { readOffers, clearOffer } from './paid-offers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -39,6 +40,22 @@ export function createApp(deps = {}) {
   const progress = deps.getProgress || getProgress;
   // 同時間只跑一個分析：兩個分析會搶同一份進度狀態，也等於自己加倍 503 的機率
   const isAnalyzing = deps.isAnalyzing || (() => progress().active);
+  const offers = deps.readOffers || readOffers;
+  const unoffer = deps.clearOffer || clearOffer;
+  // 每次都重讀環境變數：沒填付費 key 時，甜甜圈的行為要和以前完全一樣
+  const hasPaidKey = deps.hasPaidKey || (() => Boolean(process.env.GEMINI_PAID_API_KEY));
+  const now = deps.now || (() => new Date());
+
+  // 額度那行紅字過了恢復時間就不說了，免得晚上還看到過時的「額度已用完」；
+  // 按鈕照樣留著，因為那段錄音還是沒分析成功。
+  const describeOffer = (offer, at) => {
+    if (offer.reason === 'busy') return '免費版忙碌，3 次都沒成功';
+    if (offer.reason === 'paid') return '付費版也沒成功，可以再試一次';
+    if (offer.reason === 'quota' && at < new Date(offer.resetAt)) {
+      return `免費版今日額度已用完，${describeQuotaReset(at)} 後恢復`;
+    }
+    return null;
+  };
 
   // 分析在背景跑，沒有人在等它的回傳值——失敗只能寫進 log，
   // 畫面上則由那筆錄音留在清單裡（狀態為待分析、附上原因）來表達。
@@ -65,7 +82,7 @@ export function createApp(deps = {}) {
     res.json({ items: await list() });
   });
 
-  app.post('/api/pending/:id/retry', async (req, res) => {
+  const retryRecording = async (req, res, tier) => {
     if (isAnalyzing()) {
       return res.status(409).json({ ok: false, message: '分析進行中，請等目前的分析完成再重試。' });
     }
@@ -80,11 +97,22 @@ export function createApp(deps = {}) {
         mimeType: `audio/${path.extname(filePath).slice(1)}`,
         userTitle: parsed?.title || '',
         recordingPath: filePath,   // 重用既有檔案，避免重試失敗時長出第二筆待分析項目
+        tier,
       });
     } catch (e) {
       if (e?.code === 'ENOENT') return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
       res.status(500).json({ ok: false, message: e.message });
     }
+  };
+
+  app.post('/api/pending/:id/retry', (req, res) => retryRecording(req, res, 'free'));
+
+  // 花錢的路只有使用者按了付費按鈕才走得到；沒有付費 key 時寧可拒絕，也不偷偷改用免費版
+  app.post('/api/pending/:id/paid-retry', (req, res) => {
+    if (!hasPaidKey()) {
+      return res.status(400).json({ ok: false, message: '尚未設定 GEMINI_PAID_API_KEY，無法使用付費版。' });
+    }
+    return retryRecording(req, res, 'paid');
   });
 
   // 畫面上的「分析清單」＝磁碟上的錄音 ＋ 目前在跑的那一筆 ＋ 最近完成的通知。
@@ -94,12 +122,17 @@ export function createApp(deps = {}) {
     const done = listCompleted().map((c) => ({ ...c, state: 'done' }));
     const doneIds = new Set(done.map((c) => c.id));
     const recordings = await list();
+    const paidOffers = hasPaidKey() ? await offers() : {};
+    const at = now();
+    const withPaid = (r) => (paidOffers[r.id]
+      ? { ...r, paid: { note: describeOffer(paidOffers[r.id], at), costNtd: estimatePaidCostNtd(r.sizeBytes, at) } }
+      : r);
     const items = recordings
       // 登記已完成到刪檔之間，同一筆會同時存在於已完成與磁碟上，不去重就會列出兩列
       .filter((r) => !doneIds.has(r.id))
       .map((r) => (p.active && p.recordingId === r.id
         ? { ...r, state: 'analyzing', stage: p.stage, elapsedMs: p.elapsedMs, retry: p.retry }
-        : { ...r, state: 'pending' }));
+        : { ...withPaid(r), state: 'pending' }));
     // 已完成的排在最前面：它是剛發生的事，而且要你看一眼才會消失
     res.json({ items: [...done, ...items] });
   });
@@ -119,6 +152,7 @@ export function createApp(deps = {}) {
     const filePath = resolvePath(req.params.id);
     if (!filePath) return res.status(404).json({ ok: false, message: '找不到這段錄音。' });
     await discard(filePath);
+    await unoffer(req.params.id);
     res.json({ ok: true });
   });
   // 錄音一落地就回應，不等分析跑完——分析可能要好幾分鐘，而使用者往往正要開下一場會。
