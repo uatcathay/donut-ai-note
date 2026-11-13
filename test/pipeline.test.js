@@ -271,3 +271,11 @@ test('要用的版本會傳給分析器，沒指定就是免費版', async () =>
   await processMeeting(retryInput(), deps);
   assert.deepEqual(tiers, ['paid', 'free']);
 });
+
+test('完成的結果記下這次用的版本，清單才標得出免費或付費', async () => {
+  const noted = [];
+  const deps = baseDeps({ noteCompleted: (_id, done) => noted.push(done.tier) });
+  await processMeeting(retryInput({ tier: 'paid' }), deps);
+  await processMeeting(retryInput(), deps);
+  assert.deepEqual(noted, ['paid', 'free']);
+});

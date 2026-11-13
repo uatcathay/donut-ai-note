@@ -190,3 +190,11 @@ test('按「付費分析」送到付費版的端點，不是一般的重試', as
   assert.ok(requests.includes('POST /api/pending/a.webm/paid-retry'));
   assert.ok(!requests.includes('POST /api/pending/a.webm/retry'));
 });
+
+test('已完成那一列標出這筆用的是免費版還是付費版', async () => {
+  const done = { id: 'a.webm', title: '週會', state: 'done' };
+  const meta = async (job) => (await renderJobs(job)).label.children[1].textContent;
+  assert.equal(await meta({ ...done, tier: 'free' }), '已完成・免費版');
+  assert.equal(await meta({ ...done, tier: 'paid' }), '已完成・付費版');
+  assert.equal(await meta(done), '已完成', '舊資料沒有版本就不標');
+});

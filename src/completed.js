@@ -7,11 +7,11 @@ let entries = [];
 
 export function noteCompleted(id, result) {
   entries = entries.filter((e) => e.id !== id);   // 重試成功時不要留下兩列
-  entries.unshift({ id, title: result.title, result });
+  entries.unshift({ id, title: result.title, tier: result.tier, result });
 }
 
 export function listCompleted() {
-  return entries.map(({ id, title }) => ({ id, title }));
+  return entries.map(({ id, title, tier }) => ({ id, title, tier }));
 }
 
 export function takeCompleted(id) {

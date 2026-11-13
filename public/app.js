@@ -282,7 +282,8 @@ const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 const startingIds = new Set();
 
 function jobMeta(job) {
-  if (job.state === 'done') return '已完成';
+  // 付費版要花錢，事後得看得出哪幾筆花了錢；沒有版本的是舊資料，不亂標
+  if (job.state === 'done') return job.tier ? `已完成・${job.tier === 'paid' ? '付費版' : '免費版'}` : '已完成';
   if (job.state === 'analyzing' || startingIds.has(job.id)) {
     const stage = STAGE_TEXT[job.stage] || '分析';
     const elapsed = job.elapsedMs == null ? '' : `（已等 ${formatElapsed(job.elapsedMs)}）`;

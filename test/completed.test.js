@@ -62,3 +62,9 @@ test('同一個 id 再次完成只保留一列', () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].title, '新標題');
 });
+
+test('清單帶出這筆用的是免費版還是付費版', () => {
+  clearCompleted();
+  noteCompleted('a.webm', { ...result('甲'), tier: 'paid' });
+  assert.equal(listCompleted()[0].tier, 'paid');
+});
