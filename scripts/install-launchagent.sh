@@ -32,7 +32,7 @@ USAGE
 require_node() {
   NODE_BIN="$(command -v node || true)"
   if [ -z "$NODE_BIN" ]; then
-    echo "錯誤：找不到 node，請先安裝 Node.js（需 20 以上）" >&2
+    echo "錯誤：找不到 node，請先安裝 Node.js（需 20.12 以上）" >&2
     exit 1
   fi
 }

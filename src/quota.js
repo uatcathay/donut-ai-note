@@ -2,8 +2,8 @@
 // 所以這裡存的是推論而不是事實，必須會自己過期——否則額度早就恢復了，
 // 畫面還在叫人別錄。任何一次分析成功也會清掉它（見 clearQuota 的呼叫端）。
 //
-// 探測一次再判斷是行不通的：擋住我們的是 token 量不是請求次數，
-// 一個「回一個字」的探測會通過，同一時間 9MB 的錄音照樣被拒。
+// 也不能先探測一次再判斷：日額度算的是請求次數（429 的 quotaId 是
+// GenerateRequestsPerDayPerProjectPerModel-FreeTier，上限 20），探測本身就會用掉一次。
 let exhaustedUntil = null;
 
 export function noteQuotaExhausted(resetAt) {
