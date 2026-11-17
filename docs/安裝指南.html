@@ -174,6 +174,8 @@
   }
   .step h3 .en { font-family: var(--display); font-weight: 700; letter-spacing: -.02em; }
   .step p { margin: 0; }
+  /* 選用章節沒有步驟編號，內容直接放在章節裡，段落間距要跟步驟內一致 */
+  .chapter > .inner > .step-body > p { margin: 0; }
   .dim { color: var(--ink-mute); font-size: 15px; }
 
   .cmd { position: relative; }
@@ -296,6 +298,8 @@ https://github.com/uatcathay/donut-ai-note
 過程中需要三個金鑰（Gemini API key、Notion token、Notion 資料庫 ID）。
 請逐項告訴我去哪裡申請、以及怎麼自己填進 .env 檔——
 不要叫我把金鑰貼進對話裡。
+.env 裡的 GEMINI_PAID_API_KEY 是選用的付費功能，
+我沒有主動要求的話就留空，不要幫我申請。
 
 最後請告訴我怎麼在 Chrome 把它裝成 App 並固定到 Dock。
 每一步做完請告訴我要看到什麼才算成功。</pre>
@@ -311,6 +315,8 @@ https://github.com/uatcathay/donut-ai-note
 過程中需要三個金鑰（Gemini API key、Notion token、Notion 資料庫 ID）。
 請逐項告訴我去哪裡申請、以及怎麼自己填進 .env 檔——
 不要叫我把金鑰貼進對話裡。
+.env 裡的 GEMINI_PAID_API_KEY 是選用的付費功能，
+我沒有主動要求的話就留空，不要幫我申請。
 
 最後請告訴我怎麼在 Chrome 把它裝成 App 並固定到 Dock。
 每一步做完請告訴我要看到什麼才算成功。">複製整段</button>
@@ -427,6 +433,7 @@ open -e .env">複製</button>
         <div class="verify">
           <div class="tag">怎麼知道成功了</div>
           <p>三行都有值、等號後面沒有多餘的空格或引號，存檔關閉。</p>
+          <p class="dim">設定檔裡還有一行 <code>GEMINI_PAID_API_KEY</code>，留空就好。那是選用的付費分析，見後面的「選用：開啟付費分析」。</p>
           <p class="dim">Notion 那兩個留空也能用——結果會改存成桌面的 <code>.md</code> 檔，功能完全正常，只是少了自動歸檔。</p>
         </div>
       </div>
@@ -520,6 +527,35 @@ open -e .env">複製</button>
   </div>
 </section>
 
+<!-- ══ 選用：付費分析 ══ -->
+<section class="chapter">
+  <div class="inner">
+    <div class="chapter-head">
+      <h2><span class="cn">選用：開啟付費分析</span></h2>
+      <p>不開也完全能用，前面八步裝好的就是完全免費的版本。這一節只給想在免費版失敗時，多一個「花點錢馬上分析」選項的人。</p>
+    </div>
+    <div class="step-body">
+      <p>Gemini 免費版在尖峰時段常常忙碌，長會議可能連續失敗好幾次。開了付費分析之後，按「立即分析」照樣用免費版；免費版試了 3 次都沒成功，或當天的免費額度用完時，那段錄音旁邊才會多一顆<b>「付費分析・約 NT$X」</b>按鈕。按不按由你決定，不急的錄音繼續按「立即分析」等免費版就好。</p>
+      <p>費用：用的是 Standard 方案，一小時的會議實測約 NT$4（官方價格 2027 年起加倍）。只有按「付費分析」那次才會收費。另外，付費版的內容不會被 Google 拿去改進產品，免費版會。</p>
+      <div class="flag hot">
+        <p><strong>付費的 key 一定要建在新的專案裡。</strong></p>
+        <p>Google 的帳單是綁在「專案」上，不是綁在單一把 key 上。如果在免費 key 所在的專案綁帳單，那把免費 key 也會開始收費，之後每按一次「立即分析」都算錢，而且畫面上看不出來。</p>
+      </div>
+      <ol class="inner-list">
+        <li>到 <code>aistudio.google.com/apikey</code> → Create API key → 選<b>在新專案中建立</b>（Create API key in new project）。</li>
+        <li>在這個新專案旁邊按 Set up billing，綁定帳單。</li>
+        <li>用 <code>open -e .env</code> 打開設定檔，把新的 key 貼到 <code>GEMINI_PAID_API_KEY=</code> 後面，存檔。</li>
+        <li>回到專案資料夾，重跑一次 <code>bash scripts/install-launchagent.sh</code>，讓服務讀到新設定。</li>
+      </ol>
+      <div class="verify">
+        <div class="tag">怎麼知道成功了</div>
+        <p>AI Studio 的 key 列表上，<code>GEMINI_API_KEY</code> 那把所在的專案仍是 Free，付費那把所在的專案是 Paid，兩把在不同專案。</p>
+        <p class="dim">之後分析清單上的已完成那一列會標出「已完成・免費版」或「已完成・付費版」，事後看得出哪幾筆花了錢。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══ 疑難排解 ══ -->
 <section class="chapter">
   <div class="inner">
@@ -536,9 +572,11 @@ open -e .env">複製</button>
           <tr><td>搬動資料夾後就壞了</td><td>服務記的是絕對路徑</td>
             <td>同上，重跑一次安裝腳本就會用新路徑覆寫</td></tr>
           <tr><td>Gemini 目前忙碌，已自動重試多次</td><td>Google 那端容量不足，跟你無關</td>
-            <td>錄音已保留在分析清單，過一陣子按「立即分析」。離峰時段成功率明顯較高</td></tr>
+            <td>錄音已保留在分析清單，過一陣子按「立即分析」。離峰時段成功率明顯較高。有開付費分析的話，也可以直接按那一列的「付費分析」</td></tr>
           <tr><td>已達每日用量上限</td><td>免費版額度用完</td>
-            <td>訊息會直接告訴你幾點恢復（台灣時間下午三點或四點）。在那之前照樣可以錄，錄音會排在清單上等</td></tr>
+            <td>訊息會直接告訴你幾點恢復（台灣時間下午三點或四點）。在那之前照樣可以錄，錄音會排在清單上等。有開付費分析的話，那一列會直接出現「付費分析」按鈕</td></tr>
+          <tr><td>明明沒按「付費分析」，帳單卻有費用</td><td>帳單綁到了免費 key 所在的專案</td>
+            <td>回「選用：開啟付費分析」那塊紅色提醒。在沒綁帳單的新專案產生一把免費 key，換掉 <code>GEMINI_API_KEY</code>，再重跑安裝腳本</td></tr>
           <tr><td>錄完畫面說「上傳失敗」</td><td>錄音送不到本機服務</td>
             <td>多半是服務剛重啟。按「再試一次」即可，錄音還在記憶體裡</td></tr>
           <tr><td>Notion 沒有新的一列</td><td>integration 沒有被加進資料庫的 Connections</td>
