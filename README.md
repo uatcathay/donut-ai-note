@@ -15,13 +15,13 @@
 
 ## 一、安裝
 
-需要 Node.js 20 以上。
+需要 Node.js 20.12 以上。
 ```bash
 npm install
 cp .env.example .env
 ```
 
-## 二、申請三把鑰匙，填進 `.env`
+## 二、申請鑰匙，填進 `.env`
 
 1. **`GEMINI_API_KEY`（必要，免費）**
    到 https://aistudio.google.com/apikey 用 Google 帳號登入 → 建立 API key → 複製貼到 `.env`。
@@ -52,7 +52,7 @@ cp .env.example .env
 1. 首次安裝：`bash scripts/install-launchagent.sh`（伺服器會在每次登入時自動於背景啟動）。
 2. 接著在 Chrome 開啟 http://localhost:3737/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
    完成後 `~/Applications/Chrome Apps.localized/Donut AI Note.app` 即為正式 App，可拖到 Dock。
-3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 取得 Notion 連結或 `.md` 路徑。
+3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 看到摘要（同時寫進 Notion；沒設定 Notion 時會顯示桌面 `.md` 的路徑）。
 4. 關閉視窗只是關視窗，背景伺服器持續運作，下次點圖示即可瞬開。
 
 > 需要 Google Chrome。若沒設定 Notion，結果會存成桌面 `.md`。
@@ -85,10 +85,10 @@ cp .env.example .env
 
 ## 六、費用與限制
 
-- **預設不產生費用**，用的是 Gemini 免費版。有填 `GEMINI_PAID_API_KEY` 的話，只有按「付費分析」那次會收費。
-- **額度以 token 計，不是以次數計。** Google 已不再公佈固定的額度表格，要看自己專案的實際額度請到
-  https://aistudio.google.com/rate-limit（網路上流傳的「每天幾次」數字互相矛盾，不可信）。
-  實測撞到上限時只發出約 52 次請求，擋住的是 token 量——所以該看的是錄音長度，不是次數。
+- **預設不產生費用**，用的是 Gemini 免費版。有填 `GEMINI_PAID_API_KEY` 的話，只有按「付費分析」那次會收費，一小時的錄音實測約 NT$4。付費 key 要建在新的 Google Cloud 專案，帳單是綁在專案上的，同專案的免費 key 也會一起被收費。
+- **每日額度算的是請求次數。** 實際撞到上限時，Google 回傳的是每天 20 次請求
+  （`GenerateRequestsPerDayPerProjectPerModel-FreeTier`），自動重試也算在內。Google 可能調整這個數字，
+  要看自己專案目前的額度請到 https://aistudio.google.com/rate-limit。
 - **錄音滿三小時會自動停止並開始分析。** 再長下去會超過上傳大小上限，而錄音在上傳成功前
   只存在於瀏覽器記憶體裡，超過就救不回來了。
 - 額度用完時錄音仍會正常保留在分析清單，等額度恢復（太平洋時間午夜）再按「立即分析」即可。
