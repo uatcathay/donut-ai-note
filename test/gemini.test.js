@@ -427,12 +427,16 @@ test('analyze 把要用的版本傳給 generate', async () => {
   assert.equal(seen, 'free', '沒指定就是免費版，維持原本行為');
 });
 
-test('estimatePaidCostNtd：一小時的錄音（約 57MB）以 Standard 現價約 NT$6', () => {
-  assert.equal(estimatePaidCostNtd(57.3 * MB, new Date('2026-11-13T10:00:00+08:00')), 6);
+test('estimatePaidCostNtd：一小時的錄音（約 57MB）以 Standard 現價約 NT$4', () => {
+  assert.equal(estimatePaidCostNtd(57.3 * MB, new Date('2026-11-13T10:00:00+08:00')), 4);
+});
+
+test('estimatePaidCostNtd：對得上實際帳單——61.5MB 那筆實收 NT$4.16', () => {
+  assert.equal(estimatePaidCostNtd(61.5 * MB, new Date('2026-11-13T10:00:00+08:00')), 4);
 });
 
 test('estimatePaidCostNtd：2027 年起 Standard 漲成兩倍', () => {
-  assert.equal(estimatePaidCostNtd(57.3 * MB, new Date('2027-01-02T10:00:00+08:00')), 12);
+  assert.equal(estimatePaidCostNtd(57.3 * MB, new Date('2027-01-02T10:00:00+08:00')), 8);
 });
 
 test('estimatePaidCostNtd：很短的錄音至少顯示 NT$1，不顯示 NT$0', () => {

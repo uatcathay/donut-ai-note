@@ -364,7 +364,7 @@ async function jobsWith(t, deps) {
 
 test('GET /api/jobs：免費版放棄的錄音附上付費按鈕的紅字與估價', async (t) => {
   const job = await jobsWith(t, { readOffers: async () => ({ 'a.webm': { reason: 'busy' } }) });
-  assert.deepEqual(job.paid, { note: '免費版忙碌，3 次都沒成功', costNtd: 6 });
+  assert.deepEqual(job.paid, { note: '免費版忙碌，3 次都沒成功', costNtd: 4 });
 });
 
 test('GET /api/jobs：額度用完的紅字寫出恢復時間', async (t) => {
@@ -380,7 +380,7 @@ test('GET /api/jobs：過了恢復時間額度那行紅字消失，付費按鈕�
     now: () => new Date('2026-11-13T17:00:00+08:00'),
   });
   assert.equal(job.paid.note, null);
-  assert.equal(job.paid.costNtd, 6);
+  assert.equal(job.paid.costNtd, 4);
 });
 
 test('GET /api/jobs：付費版失敗時紅字說明付費版也沒成功', async (t) => {

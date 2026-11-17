@@ -193,10 +193,11 @@ const PAID_MAX_ATTEMPTS = 2;
 // 付費按鈕上的金額，讓使用者當下判斷值不值得。依官方定價頁（2026-11 查證）的 Standard 方案，
 // 每 100 萬 token：輸入 $0.75、輸出 $3.75，2027/1/1 起兩者都變兩倍。
 // 錄音長度只能從檔案大小推：瀏覽器錄的 webm 實測兩小時 114.6MB，約每小時 57.3MB。
-// 音訊每秒 32 token；輸出（逐字稿＋摘要）每小時約 2.5 萬 token 是估計值，還沒實測過。
+// 音訊每秒 32 token。輸出每小時的 token 數由實際帳單反推：2026-11-13 一筆 61.5MB 的錄音
+// 實收 NT$4.16，扣掉音訊輸入後約 9,300 token（原本憑空估 2.5 萬，按鈕因此多報了五成）。
 const MB_PER_HOUR = 57.3;
 const INPUT_TOKENS_PER_HOUR = 32 * 3600;
-const OUTPUT_TOKENS_PER_HOUR = 25_000;
+const OUTPUT_TOKENS_PER_HOUR = 9_300;
 const NTD_PER_USD = 32;
 const PRICE_DOUBLES_AT = new Date('2027-01-01T00:00:00-08:00');
 
