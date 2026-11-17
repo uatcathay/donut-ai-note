@@ -456,3 +456,23 @@ test('DELETE /api/pending/:id 連同付費按鈕的紀錄一起清掉', async (t
   await fetch(`http://localhost:${server.address().port}/api/pending/a.webm`, { method: 'DELETE' });
   assert.deepEqual(cleared, ['a.webm']);
 });
+
+// 只用免費版的人沒有「付費」可以對照，標「免費版」只是多一個字的雜訊
+test('GET /api/jobs：有設定付費 key 時，已完成那一列才帶出用的版本', async (t) => {
+  const doneTier = async (hasPaidKey) => {
+    clearCompleted();
+    noteCompleted('a.webm', { title: '甲', topics: [], nextSteps: [], transcript: 't', destination: {}, tier: 'free' });
+    const app = createApp({
+      processMeeting: async () => ({}),
+      listRecordings: async () => [],
+      getProgress: () => ({ active: false }),
+      hasPaidKey: () => hasPaidKey,
+    });
+    const server = app.listen(0);
+    t.after(() => { server.close(); clearCompleted(); });
+    const { items } = await (await fetch(`http://localhost:${server.address().port}/api/jobs`)).json();
+    return items[0].tier;
+  };
+  assert.equal(await doneTier(true), 'free');
+  assert.equal(await doneTier(false), undefined);
+});

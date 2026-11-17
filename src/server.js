@@ -119,7 +119,10 @@ export function createApp(deps = {}) {
   // 合成一支給前端，省得它自己對三支端點的結果做時序對齊。
   app.get('/api/jobs', async (_req, res) => {
     const p = progress();
-    const done = listCompleted().map((c) => ({ ...c, state: 'done' }));
+    // 只用免費版的人看到「已完成・免費版」只是雜訊，有付費可以對照時才標版本
+    const showTier = hasPaidKey();
+    const done = listCompleted().map(({ tier, ...c }) => (
+      showTier ? { ...c, tier, state: 'done' } : { ...c, state: 'done' }));
     const doneIds = new Set(done.map((c) => c.id));
     const recordings = await list();
     const paidOffers = hasPaidKey() ? await offers() : {};
