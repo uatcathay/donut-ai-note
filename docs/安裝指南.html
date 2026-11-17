@@ -270,7 +270,7 @@
     <ul class="facts">
       <li>macOS 專用</li>
       <li>需要 Google Chrome</li>
-      <li>需要 Node.js 20+</li>
+      <li>需要 Node.js 20.12+</li>
       <li>約 20 分鐘</li>
       <li>不產生費用</li>
     </ul>
@@ -292,7 +292,7 @@ https://github.com/uatcathay/donut-ai-note
 請幫我做這些：
 1. clone 到我的家目錄底下（不要放在「下載」資料夾）
 2. 執行 npm install，然後跑 npm test 確認測試全過
-3. 執行 bash scripts/install-launchagent.sh 讓服務常駐
+3. 等我把金鑰填進 .env 之後，再執行 bash scripts/install-launchagent.sh 讓服務常駐
 4. 確認 http://localhost:3737/ 打得開
 
 過程中需要三個金鑰（Gemini API key、Notion token、Notion 資料庫 ID）。
@@ -309,7 +309,7 @@ https://github.com/uatcathay/donut-ai-note
 請幫我做這些：
 1. clone 到我的家目錄底下（不要放在「下載」資料夾）
 2. 執行 npm install，然後跑 npm test 確認測試全過
-3. 執行 bash scripts/install-launchagent.sh 讓服務常駐
+3. 等我把金鑰填進 .env 之後，再執行 bash scripts/install-launchagent.sh 讓服務常駐
 4. 確認 http://localhost:3737/ 打得開
 
 過程中需要三個金鑰（Gemini API key、Notion token、Notion 資料庫 ID）。
@@ -365,7 +365,7 @@ https://github.com/uatcathay/donut-ai-note
         </div>
         <div class="verify">
           <div class="tag">怎麼知道成功了</div>
-          <p>出現 <code>v20.x.x</code> 或更高的數字就可以了。</p>
+          <p>出現 <code>v20.12</code> 或更高的數字（v22、v24 都可以）就可以了。</p>
           <p class="dim">出現「command not found」表示還沒安裝——到 <code>nodejs.org</code> 下載 LTS 版本，一路按下一步，裝完把終端機關掉重開再試一次。</p>
         </div>
       </div>
@@ -402,7 +402,7 @@ cd donut-ai-note">複製</button>
         </div>
         <div class="verify">
           <div class="tag">怎麼知道成功了</div>
-          <p>跑完沒有紅色的 <code>ERR!</code>，資料夾裡多出一個 <code>node_modules</code>。接著跑 <code>npm test</code>，應該看到 <code>pass 151</code>、<code>fail 0</code>。</p>
+          <p>跑完沒有紅色的 <code>ERR!</code>，資料夾裡多出一個 <code>node_modules</code>。接著跑 <code>npm test</code>，應該看到 <code>fail 0</code>（<code>pass</code> 的數字會隨版本增加）。</p>
           <p class="dim">測試全過代表程式本身沒問題，接下來只剩你的金鑰設定。</p>
         </div>
       </div>
@@ -427,7 +427,7 @@ open -e .env">複製</button>
         </ol>
         <div class="flag hot">
           <p><strong>最容易漏的一步：把資料庫分享給 integration。</strong></p>
-          <p>在資料庫頁面右上角 <code>•••</code> → Connections → 選你剛建立的 integration。沒做這一步的話 Notion 會拒絕寫入，而錯誤訊息只會說「找不到資料庫」，很難聯想到是權限問題。</p>
+          <p>在資料庫頁面右上角 <code>•••</code> → Connections → 選你剛建立的 integration。沒做這一步的話 Notion 會拒絕寫入，畫面上只會顯示「分析未成功」，要到 log 才看得到原因。</p>
           <p>做完之後，複製資料庫網址裡 <code>notion.so/</code> 之後、<code>?</code> 之前那段 32 碼英數，貼進 <code>NOTION_DATABASE_ID</code>。</p>
         </div>
         <div class="verify">
@@ -450,7 +450,7 @@ open -e .env">複製</button>
         <div class="verify">
           <div class="tag">怎麼知道成功了</div>
           <p>終端機印出 <code>已安裝並啟動</code>。接著在 Chrome 開 <code>http://localhost:3737/</code>，應該看到一個乾淨的錄音畫面，中間一支麥克風。</p>
-          <p class="dim">如果印出「連接埠已被占用」，表示你有別的程式在用 3737。腳本會拒絕安裝而不是裝出一個壞掉的服務——把那個程式關掉再跑一次就好。</p>
+          <p class="dim">如果印出「已被其他程序占用」，表示你有別的程式在用 3737。腳本會拒絕安裝而不是裝出一個壞掉的服務——把那個程式關掉再跑一次就好。</p>
         </div>
       </div>
     </div>
@@ -484,7 +484,7 @@ open -e .env">複製</button>
         </div>
         <div class="verify">
           <div class="tag">怎麼知道成功了</div>
-          <p>停止後畫面出現三個跳動的方塊和 <code>Analyzing with Gemini…</code>，下面顯示目前在做什麼（上傳音檔 → 分析錄音 → 寫入筆記）。十幾秒的錄音通常十秒內跑完。</p>
+          <p>停止後畫面出現三個跳動的方塊和 <code>Analyzing with Gemini…</code>，下面顯示目前在做什麼（上傳音檔 → 分析錄音 → 寫入筆記）。十幾秒的錄音通常一分鐘內跑完。</p>
           <p>跑完直接顯示摘要卡片，裡面有 <code>✨ Minutes</code>，有談到待辦的話還會有 <code>◻️ What's next?</code>。</p>
         </div>
       </div>
@@ -571,9 +571,9 @@ open -e .env">複製</button>
             <td>終端機進到專案資料夾，重跑 <code>bash scripts/install-launchagent.sh</code></td></tr>
           <tr><td>搬動資料夾後就壞了</td><td>服務記的是絕對路徑</td>
             <td>同上，重跑一次安裝腳本就會用新路徑覆寫</td></tr>
-          <tr><td>Gemini 目前忙碌，已自動重試多次</td><td>Google 那端容量不足，跟你無關</td>
+          <tr><td>處理中顯示「Gemini 忙線中」，最後出現「分析未成功」</td><td>Google 那端容量不足，跟你無關</td>
             <td>錄音已保留在分析清單，過一陣子按「立即分析」。離峰時段成功率明顯較高。有開付費分析的話，也可以直接按那一列的「付費分析」</td></tr>
-          <tr><td>已達每日用量上限</td><td>免費版額度用完</td>
+          <tr><td>開始錄音時跳出「額度已達上限」，或清單那一列寫「今日額度已用完」</td><td>免費版額度用完</td>
             <td>訊息會直接告訴你幾點恢復（台灣時間下午三點或四點）。在那之前照樣可以錄，錄音會排在清單上等。有開付費分析的話，那一列會直接出現「付費分析」按鈕</td></tr>
           <tr><td>明明沒按「付費分析」，帳單卻有費用</td><td>帳單綁到了免費 key 所在的專案</td>
             <td>回「選用：開啟付費分析」那塊紅色提醒。在沒綁帳單的新專案產生一把免費 key，換掉 <code>GEMINI_API_KEY</code>，再重跑安裝腳本</td></tr>
