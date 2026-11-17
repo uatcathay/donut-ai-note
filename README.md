@@ -50,7 +50,7 @@ cp .env.example .env
 ## 三、使用
 
 1. 首次安裝：`bash scripts/install-launchagent.sh`（伺服器會在每次登入時自動於背景啟動）。
-2. 接著在 Chrome 開啟 http://localhost:3737/ → ⋮ →「投放、儲存及分享」→「安裝頁面為應用程式」。
+2. 接著在 Chrome 開啟 http://localhost:3737/ → ⋮ →「投放、儲存及分享」→「安裝 Donut AI Note…」。
    完成後 `~/Applications/Chrome Apps.localized/Donut AI Note.app` 即為正式 App，可拖到 Dock。
 3. **點 Dock 上的圖示**開啟視窗 → 填標題（可跳過）→ 開始錄音 →（可暫停/繼續/重新開始）→ 停止並分析 → 看到摘要（同時寫進 Notion；沒設定 Notion 時會顯示桌面 `.md` 的路徑）。
 4. 關閉視窗只是關視窗，背景伺服器持續運作，下次點圖示即可瞬開。
